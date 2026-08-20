@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:block",
+  "random_sequence": "chest_shield:blocks/shielded_chest",
+  "pools": [
+    {
+      "rolls": 1.0,
+      "bonus_rolls": 0.0,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "chest_shield:shielded_chest"
+        }
+      ]
+    }
+  ]
+}

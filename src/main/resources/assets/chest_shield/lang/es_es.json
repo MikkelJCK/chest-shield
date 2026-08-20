@@ -1,0 +1,23 @@
+{
+  "block.chest_shield.shielded_chest": "Cofre blindado",
+  "container.chest_shield.large_shielded_chest": "Cofre blindado grande",
+  "item.chest_shield.master_key": "Llave maestra",
+  "message.chest_shield.protegido": "Este cofre pertenece a %s",
+  "message.chest_shield.clave_incorrecta": "Contraseña incorrecta",
+  "message.chest_shield.espera": "Demasiados intentos, espera",
+  "message.chest_shield.clave_guardada": "Contraseña guardada",
+  "message.chest_shield.clave_quitada": "Contraseña eliminada",
+  "screen.chest_shield.titulo_clave": "Cofre protegido",
+  "screen.chest_shield.titulo_config": "Contraseña del cofre",
+  "screen.chest_shield.cofre_de": "Cofre de %s",
+  "screen.chest_shield.escribe_clave": "Escribe la contraseña",
+  "screen.chest_shield.abrir": "Abrir",
+  "screen.chest_shield.guardar": "Guardar",
+  "screen.chest_shield.cambiar": "Cambiar",
+  "screen.chest_shield.quitar": "Quitar contraseña",
+  "screen.chest_shield.tiene_clave": "Este cofre ya tiene contraseña",
+  "screen.chest_shield.sin_clave": "Sin contraseña. Escribe una:",
+  "modmenu.nameTranslation.chest_shield": "Chest Shield",
+  "modmenu.summaryTranslation.chest_shield": "Cofres cerrados a su dueño, con contraseña opcional.",
+  "modmenu.descriptionTranslation.chest_shield": "Cofres cerrados a su dueño, con contraseña opcional. A prueba de griefing."
+}

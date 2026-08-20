@@ -1,0 +1,23 @@
+{
+  "block.chest_shield.shielded_chest": "Shielded Chest",
+  "container.chest_shield.large_shielded_chest": "Large Shielded Chest",
+  "item.chest_shield.master_key": "Master Key",
+  "message.chest_shield.protegido": "This chest belongs to %s",
+  "message.chest_shield.clave_incorrecta": "Wrong password",
+  "message.chest_shield.espera": "Too many attempts, wait",
+  "message.chest_shield.clave_guardada": "Password saved",
+  "message.chest_shield.clave_quitada": "Password removed",
+  "screen.chest_shield.titulo_clave": "Protected chest",
+  "screen.chest_shield.titulo_config": "Chest password",
+  "screen.chest_shield.cofre_de": "%s's chest",
+  "screen.chest_shield.escribe_clave": "Enter the password",
+  "screen.chest_shield.abrir": "Open",
+  "screen.chest_shield.guardar": "Save",
+  "screen.chest_shield.cambiar": "Change",
+  "screen.chest_shield.quitar": "Remove password",
+  "screen.chest_shield.tiene_clave": "This chest already has a password",
+  "screen.chest_shield.sin_clave": "No password. Enter one:",
+  "modmenu.nameTranslation.chest_shield": "Chest Shield",
+  "modmenu.summaryTranslation.chest_shield": "Owner-locked chests with an optional password.",
+  "modmenu.descriptionTranslation.chest_shield": "Chests locked to their owner, with an optional password. Griefing-proof."
+}
