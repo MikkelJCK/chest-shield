@@ -1,0 +1,23 @@
+{
+  "block.reinforced_chests.reinforced_chest": "Cofre blindado",
+  "container.reinforced_chests.large_reinforced_chest": "Cofre blindado grande",
+  "item.reinforced_chests.master_key": "Llave maestra",
+  "message.reinforced_chests.protegido": "Este cofre pertenece a %s",
+  "message.reinforced_chests.clave_incorrecta": "Contraseña incorrecta",
+  "message.reinforced_chests.espera": "Demasiados intentos, espera",
+  "message.reinforced_chests.clave_guardada": "Contraseña guardada",
+  "message.reinforced_chests.clave_quitada": "Contraseña eliminada",
+  "screen.reinforced_chests.titulo_clave": "Cofre protegido",
+  "screen.reinforced_chests.titulo_config": "Contraseña del cofre",
+  "screen.reinforced_chests.cofre_de": "Cofre de %s",
+  "screen.reinforced_chests.escribe_clave": "Escribe la contraseña",
+  "screen.reinforced_chests.abrir": "Abrir",
+  "screen.reinforced_chests.guardar": "Guardar",
+  "screen.reinforced_chests.cambiar": "Cambiar",
+  "screen.reinforced_chests.quitar": "Quitar contraseña",
+  "screen.reinforced_chests.tiene_clave": "Este cofre ya tiene contraseña",
+  "screen.reinforced_chests.sin_clave": "Sin contraseña. Escribe una:",
+  "modmenu.nameTranslation.reinforced_chests": "Cofres blindados",
+  "modmenu.summaryTranslation.reinforced_chests": "Cofres cerrados a su dueño, con contraseña opcional.",
+  "modmenu.descriptionTranslation.reinforced_chests": "Cofres cerrados a su dueño, con contraseña opcional. A prueba de griefing."
+}

@@ -1,0 +1,5 @@
+{
+  "variants": {
+    "": { "model": "reinforced_chests:block/reinforced_chest" }
+  }
+}

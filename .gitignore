@@ -1,0 +1,52 @@
+# gradle
+
+.gradle/
+build/
+out/
+classes/
+
+# eclipse
+
+*.launch
+
+# idea
+
+.idea/*
+# ...pero las configuraciones de ejecucion SI valen la pena versionarlas:
+# MC_Cliente_A y MC_Cliente_B son las que permiten probar con dos jugadores.
+# Ojo: hay que excluir .idea/* y no .idea/, o git no entra a mirar dentro
+# y esta negacion no funcionaria.
+!.idea/runConfigurations/
+*.iml
+*.ipr
+*.iws
+
+# vscode
+
+.settings/
+.vscode/
+bin/
+.classpath
+.project
+
+# macos
+
+*.DS_Store
+
+# fabric
+
+run/
+run2/
+
+# herramientas de apoyo (las regenera la tarea exportarOwo)
+
+libs-inspeccion/
+_a_borrar/
+_a_borrar_git/
+
+# java
+
+hs_err_*.log
+replay_*.log
+*.hprof
+*.jfr

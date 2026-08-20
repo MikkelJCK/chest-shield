@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "id": "reinforced_chests",
+  "version": "${version}",
+  "name": "Reinforced Chests",
+  "description": "Owner-locked chests with an optional password. Griefing-proof.",
+  "authors": [
+    "mikkeljck"
+  ],
+  "contact": {},
+  "license": "MIT",
+  "icon": "assets/reinforced_chests/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.mikkeljck.reinforcedchests.CofresPersonales"
+    ],
+    "client": [
+      "com.mikkeljck.reinforcedchests.client.CofresPersonalesClient"
+    ],
+    "fabric-datagen": [
+      "com.mikkeljck.reinforcedchests.client.CofresPersonalesDataGenerator"
+    ]
+  },
+  "mixins": [
+    "reinforced_chests.mixins.json",
+    {
+      "config": "reinforced_chests.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "~26.1.2",
+    "java": ">=25",
+    "fabric-api": "*",
+    "owo": ">=0.13.1"
+  }
+}

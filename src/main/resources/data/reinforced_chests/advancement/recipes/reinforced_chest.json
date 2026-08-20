@@ -1,0 +1,43 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "tiene_lingote_de_hierro": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:iron_ingot"
+          }
+        ]
+      }
+    },
+    "tiene_cofre": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "minecraft:chest"
+          }
+        ]
+      }
+    },
+    "ya_tiene_la_receta": {
+      "trigger": "minecraft:recipe_unlocked",
+      "conditions": {
+        "recipe": "reinforced_chests:reinforced_chest"
+      }
+    }
+  },
+  "requirements": [
+    [
+      "ya_tiene_la_receta",
+      "tiene_lingote_de_hierro",
+      "tiene_cofre"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "reinforced_chests:reinforced_chest"
+    ]
+  }
+}
