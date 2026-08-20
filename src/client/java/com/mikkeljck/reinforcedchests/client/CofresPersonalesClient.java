@@ -37,7 +37,7 @@ public class CofresPersonalesClient implements ClientModInitializer {
 
 			// El dueno agachado abre la configuracion de contrasena.
 			if (cofre.esPropietario(player) && player.isShiftKeyDown()) {
-				Minecraft.getInstance().setScreen(
+				Minecraft.getInstance().gui.setScreen(
 						new PantallaConfigClave(hitResult.getBlockPos(), cofre.tieneClave()));
 				// FAIL, no SUCCESS: SUCCESS cancela el procesado local pero IGUAL
 				// manda el paquete al servidor, que abriria el cofre encima de
@@ -51,7 +51,7 @@ public class CofresPersonalesClient implements ClientModInitializer {
 			boolean pareceAutorizado = cofre.esPropietario(player)
 					|| CofrePersonalBlockEntity.sostieneLlaveMaestra(player);
 			if (!pareceAutorizado && cofre.tieneClave()) {
-				Minecraft.getInstance().setScreen(
+				Minecraft.getInstance().gui.setScreen(
 						new PantallaClave(hitResult.getBlockPos(), cofre.getNombrePropietario()));
 				return InteractionResult.FAIL;
 			}

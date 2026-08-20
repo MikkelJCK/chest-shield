@@ -125,7 +125,7 @@ public final class RedCofres {
 		if (!jugador.level().isLoaded(pos)) {
 			return null;
 		}
-		if (jugador.distanceToSqr(pos.getCenter()) > ALCANCE_MAXIMO) {
+		if (pos.distToCenterSqr(jugador.position()) > ALCANCE_MAXIMO) {
 			return null;
 		}
 		return jugador.level().getBlockEntity(pos) instanceof CofrePersonalBlockEntity cofre ? cofre : null;
