@@ -38,7 +38,7 @@ next time.
 
 ## Requirements
 
-- Minecraft 26.1.2
+- Minecraft 26.2
 - Fabric Loader 0.19.3 or newer
 - [Fabric API](https://modrinth.com/mod/fabric-api)
 - [owo-lib](https://modrinth.com/mod/owo-lib) 0.13.1 or newer
@@ -47,7 +47,7 @@ Required on both the client and the server.
 
 ## Branches
 
-One branch per Minecraft version. `26.1.2` is the current one.
+One branch per Minecraft version. `26.1.2` and `26.2` are both maintained.
 
 ## License
 

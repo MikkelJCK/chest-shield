@@ -16,7 +16,7 @@ repositories {
 	// for more information about repositories.
 }
 
-// El nombre del jar queda como reinforced_chests-1.0.0+26.1.2.jar
+// El nombre del jar queda como reinforced_chests-1.0.0+26.2.jar
 // El sufijo +<mc> es metadato de build de semver, y es la convencion que usan
 // fabric-api y owo-lib: deja claro para que Minecraft sirve cada archivo.
 version = "${project.mod_version}+${project.minecraft_version}"
