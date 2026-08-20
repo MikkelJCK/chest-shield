@@ -33,7 +33,7 @@ installing a protection plugin.
 | Open | Right click, as the owner |
 | Set or change the password | Crouch + right click, as the owner |
 | Enter a password | Right click, as anyone else |
-| Get the Master Key | `/give @s reinforced_chests:master_key` |
+| Get the Master Key | `/give @s chest_shield:master_key` |
 
 Access granted by password lasts for that one opening. It has to be typed again
 next time.

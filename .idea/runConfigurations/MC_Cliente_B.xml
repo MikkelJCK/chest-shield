@@ -1,7 +1,7 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" factoryName="Application" name="MC Cliente B (intruso)" type="Application">
     <option name="MAIN_CLASS_NAME" value="net.fabricmc.devlaunchinjector.Main"/>
-    <module name="reinforced_chests.client"/>
+    <module name="chest_shield.client"/>
     <option name="PROGRAM_PARAMETERS" value="--username Intruso"/>
     <option name="VM_PARAMETERS" value="-Dfabric.dli.config=F:\MOD@@0020COFRES\cofres-personales-template-26.1.2\.gradle\loom-cache\launch.cfg -Dfabric.dli.env=client -Dfabric.dli.main=net.fabricmc.loader.impl.launch.knot.KnotClient --sun-misc-unsafe-memory-access=allow --enable-native-access=ALL-UNNAMED"/>
     <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/run2/"/>

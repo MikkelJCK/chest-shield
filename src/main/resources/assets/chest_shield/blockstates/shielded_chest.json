@@ -1,0 +1,5 @@
+{
+  "variants": {
+    "": { "model": "chest_shield:block/shielded_chest" }
+  }
+}

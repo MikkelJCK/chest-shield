@@ -16,7 +16,7 @@ repositories {
 	// for more information about repositories.
 }
 
-// El nombre del jar queda como reinforced_chests-1.0.0+26.2.jar
+// El nombre del jar queda como chest_shield-1.0.0+26.2.jar
 // El sufijo +<mc> es metadato de build de semver, y es la convencion que usan
 // fabric-api y owo-lib: deja claro para que Minecraft sirve cada archivo.
 version = "${project.mod_version}+${project.minecraft_version}"
@@ -25,7 +25,7 @@ loom {
 	splitEnvironmentSourceSets()
 
 	mods {
-		"reinforced_chests" {
+		"chest_shield" {
 			sourceSet sourceSets.main
 			sourceSet sourceSets.client
 		}
@@ -138,7 +138,7 @@ tasks.register('verificarTexturas') {
 
 // Tarea de apoyo: copia el jar de owo-lib (y sus fuentes) dentro del proyecto,
 // para poder inspeccionar su API sin depender del cache global de Gradle.
-// Uso: panel Gradle > reinforced_chests > Tasks > other > exportarOwo
+// Uso: panel Gradle > chest_shield > Tasks > other > exportarOwo
 tasks.register('exportarOwo', Copy) {
 	group = 'help'
 	description = 'Copia owo-lib a libs-inspeccion/ para consultar su API'

@@ -1,31 +1,31 @@
 {
   "schemaVersion": 1,
-  "id": "reinforced_chests",
+  "id": "chest_shield",
   "version": "${version}",
-  "name": "Reinforced Chests",
+  "name": "Chest Shield",
   "description": "Owner-locked chests with an optional password. Griefing-proof.",
   "authors": [
     "mikkeljck"
   ],
   "contact": {},
   "license": "MIT",
-  "icon": "assets/reinforced_chests/icon.png",
+  "icon": "assets/chest_shield/icon.png",
   "environment": "*",
   "entrypoints": {
     "main": [
-      "com.mikkeljck.reinforcedchests.CofresPersonales"
+      "com.mikkeljck.chestshield.CofresPersonales"
     ],
     "client": [
-      "com.mikkeljck.reinforcedchests.client.CofresPersonalesClient"
+      "com.mikkeljck.chestshield.client.CofresPersonalesClient"
     ],
     "fabric-datagen": [
-      "com.mikkeljck.reinforcedchests.client.CofresPersonalesDataGenerator"
+      "com.mikkeljck.chestshield.client.CofresPersonalesDataGenerator"
     ]
   },
   "mixins": [
-    "reinforced_chests.mixins.json",
+    "chest_shield.mixins.json",
     {
-      "config": "reinforced_chests.client.mixins.json",
+      "config": "chest_shield.client.mixins.json",
       "environment": "client"
     }
   ],
