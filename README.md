@@ -1,4 +1,4 @@
-# Reinforced Chests
+# Chest Shield
 
 Chests locked to their owner, with an optional password. Griefing-proof.
 
