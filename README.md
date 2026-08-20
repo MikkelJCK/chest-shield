@@ -1,4 +1,4 @@
-# Reinforced Chests
+# Chest Shield
 
 Chests locked to their owner, with an optional password. Griefing-proof.
 
@@ -49,7 +49,7 @@ Required on both the client and the server.
 
 ## Branches
 
-One branch per Minecraft version. `26.1.2` is the current one.
+One branch per Minecraft version. `26.1.2` and `26.2` are both maintained.
 
 ## License
 
