@@ -17,6 +17,11 @@ classes/
 # Ojo: hay que excluir .idea/* y no .idea/, o git no entra a mirar dentro
 # y esta negacion no funcionaria.
 !.idea/runConfigurations/
+# ...salvo las que regenera Loom en cada refresh de Gradle: llevan rutas
+# absolutas de la maquina y la lista de jars, que cambia con cada version.
+.idea/runConfigurations/Minecraft_Client.xml
+.idea/runConfigurations/Minecraft_Server.xml
+.idea/runConfigurations/Data_Generation.xml
 *.iml
 *.ipr
 *.iws
