@@ -25,6 +25,8 @@ installing a protection plugin.
 
 ## Usage
 
+<img src="docs/images/crafting.png" width="420" alt="Crafting recipe: a vanilla chest surrounded by 8 iron ingots">
+
 | Action | How |
 |---|---|
 | Craft | A vanilla chest surrounded by 8 iron ingots |
