@@ -43,9 +43,30 @@ public final class RedCofres {
 	public record EstablecerClave(BlockPos pos, String clave) {
 	}
 
+	/**
+	 * Servidor -> cliente: "abre la pantalla de contrasena para este cofre".
+	 *
+	 * Quien decide si hay que pedir la clave es el SERVIDOR, no el cliente. El
+	 * cliente tiene una copia del cofre que puede estar desfasada (sobre todo con
+	 * el perfil global, donde un cambio afecta a muchos cofres pero solo se
+	 * resincroniza uno), asi que si decidiera el, un cofre podria quedarse sin
+	 * responder al click. Aqui el cliente solo obedece.
+	 */
+	public record PedirClave(BlockPos pos, String nombreDueno) {
+	}
+
 	public static void inicializar() {
 		CANAL.registerServerbound(IntentoClave.class, RedCofres::alIntentarClave);
 		CANAL.registerServerbound(EstablecerClave.class, RedCofres::alEstablecerClave);
+		// El manejador real se registra en el cliente. En el servidor dedicado
+		// solo se declara el paquete, para que el saludo de owo cuadre en ambos
+		// lados sin cargar ninguna clase de cliente.
+		CANAL.registerClientboundDeferred(PedirClave.class);
+	}
+
+	/** Le pide al cliente de este jugador que abra la pantalla de contrasena. */
+	public static void pedirClave(final ServerPlayer jugador, final BlockPos pos, final String nombreDueno) {
+		CANAL.serverHandle(jugador).send(new PedirClave(pos, nombreDueno));
 	}
 
 	private static void alIntentarClave(final IntentoClave mensaje, final ServerAccess acceso) {

@@ -34,6 +34,19 @@ public class Proteccion {
 
 	public static final int LONGITUD_MAXIMA_CLAVE = Ajustes.LONGITUD_MAXIMA_CLAVE;
 
+	/**
+	 * Version del formato de datos guardado en el bloque.
+	 *
+	 * 0 = mod 1.0.0 (no escribia este campo)
+	 * 1 = mod 1.1.0
+	 *
+	 * La migracion es PEREZOSA, cofre a cofre, cuando el chunk se carga. No se
+	 * puede hacer "al arrancar el servidor" porque eso obligaria a cargar el
+	 * mundo entero. Cada cofre se actualiza solo la primera vez que alguien pasa
+	 * por su chunk, y se vuelve a guardar ya con la version nueva.
+	 */
+	public static final int VERSION_DATOS = 1;
+
 	/** Ticks de espera tras un intento fallido, para frenar la fuerza bruta. */
 	private static final long ENFRIAMIENTO_TICKS = 40L;
 
@@ -218,6 +231,7 @@ public class Proteccion {
 	// ---------- Guardado ----------
 
 	public void guardar(final ValueOutput output) {
+		output.putInt("Version", VERSION_DATOS);
 		if (this.propietario != null) {
 			output.store("Propietario", UUIDUtil.CODEC, this.propietario);
 			output.putString("NombrePropietario", this.nombrePropietario);
@@ -229,6 +243,30 @@ public class Proteccion {
 		this.propietario = input.read("Propietario", UUIDUtil.CODEC).orElse(null);
 		this.nombrePropietario = input.getStringOr("NombrePropietario", "");
 		this.ajustes.cargar(input);
+		this.migrar(input.getIntOr("Version", 0));
+	}
+
+	/**
+	 * Lleva los datos de una version anterior del mod a la actual.
+	 *
+	 * Se llama SIEMPRE al cargar, con la version que traia el bloque. Los pasos
+	 * son acumulativos y sin "else": un cofre de la version 0 tiene que poder
+	 * atravesar todos los pasos hasta la actual de una sola vez.
+	 *
+	 * De 0 a 1 no hay nada que transformar a proposito: la version 1.1 conserva
+	 * tal cual las claves NBT de la 1.0.0 y solo anade campos nuevos, que al
+	 * faltar toman sus valores por defecto. Un cofre viejo sigue teniendo su
+	 * dueno y su contrasena sin tocar nada, y su lista de permisos nace vacia.
+	 */
+	private void migrar(final int versionGuardada) {
+		if (versionGuardada >= VERSION_DATOS) {
+			return;
+		}
+		if (versionGuardada < 1) {
+			// 1.0.0 -> 1.1.0: sin transformaciones. Ver el comentario de arriba.
+			CofresPersonales.LOGGER.debug("Migrando cofre de la version {} a la {}",
+					versionGuardada, VERSION_DATOS);
+		}
 	}
 
 	/**

@@ -5,10 +5,12 @@ import java.util.Map;
 import java.util.function.BiPredicate;
 
 import com.mikkeljck.chestshield.CofresPersonales;
+import com.mikkeljck.chestshield.red.RedCofres;
 import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionResult;
@@ -271,10 +273,12 @@ public class CofrePersonalBlock extends BaseEntityBlock {
 			}
 			if (cofre.puedeAcceder(jugador)) {
 				AperturaCofre.abrir(jugador, level, pos, estado, false);
-			} else if (!cofre.tieneClave()) {
+			} else if (cofre.tieneClave() && jugador instanceof ServerPlayer servidorJugador) {
+				// Es el servidor quien decide pedir la clave, no el cliente.
+				RedCofres.pedirClave(servidorJugador, pos, cofre.getNombrePropietario());
+			} else {
 				cofre.avisarPropiedad(jugador);
 			}
-			// Con clave no hacemos nada: el cliente ya abrio la pantalla.
 		}
 		return InteractionResult.SUCCESS;
 	}
