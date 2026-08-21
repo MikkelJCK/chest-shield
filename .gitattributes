@@ -1,3 +1,6 @@
+# Normalizar a LF en el repo (evita que un editor convierta todo a CRLF)
+* text=auto eol=lf
+
 #
 # https://help.github.com/articles/dealing-with-line-endings/
 #
