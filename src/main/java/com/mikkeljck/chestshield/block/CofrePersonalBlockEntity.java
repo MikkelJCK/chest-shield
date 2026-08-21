@@ -201,8 +201,8 @@ public class CofrePersonalBlockEntity extends BlockEntity implements MenuProvide
 		return this.proteccion.esCompatibleCon(otro.proteccion);
 	}
 
-	public void copiarClaveDe(final CofrePersonalBlockEntity otra) {
-		this.proteccion.copiarClaveDe(otra.proteccion);
+	public void copiarAjustesDe(final CofrePersonalBlockEntity otra) {
+		this.proteccion.copiarAjustesDe(otra.proteccion);
 	}
 
 	/**
@@ -257,9 +257,16 @@ public class CofrePersonalBlockEntity extends BlockEntity implements MenuProvide
 
 	// ---------- Menu ----------
 
+	/**
+	 * El titulo del contenedor dice de quien es el cofre. Se calcula en el
+	 * servidor, que es quien conoce al dueno, y llega al cliente dentro del
+	 * paquete de apertura del menu.
+	 */
 	@Override
 	public Component getDisplayName() {
-		return Component.translatable("block.chest_shield.shielded_chest");
+		return this.proteccion.getPropietario() == null
+				? Component.translatable("block.chest_shield.shielded_chest")
+				: Component.translatable("container.chest_shield.cofre_de", this.proteccion.getNombrePropietario());
 	}
 
 	@Override

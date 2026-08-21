@@ -1,6 +1,8 @@
 {
   "block.chest_shield.shielded_chest": "Cofre blindado",
   "container.chest_shield.large_shielded_chest": "Cofre blindado grande",
+  "container.chest_shield.cofre_de": "Cofre de %s",
+  "container.chest_shield.cofre_grande_de": "Cofre grande de %s",
   "item.chest_shield.master_key": "Llave maestra",
   "message.chest_shield.protegido": "Este cofre pertenece a %s",
   "message.chest_shield.clave_incorrecta": "Contraseña incorrecta",

@@ -1,10 +1,12 @@
 package com.mikkeljck.chestshield;
 
 import com.mikkeljck.chestshield.block.CofrePersonalBlock;
+import com.mikkeljck.chestshield.comando.ComandoCofre;
 import com.mikkeljck.chestshield.block.CofrePersonalBlockEntity;
 import com.mikkeljck.chestshield.red.RedCofres;
 
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.creativetab.v1.CreativeModeTabEvents;
 import net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityTypeBuilder;
@@ -96,6 +98,10 @@ public class CofresPersonales implements ModInitializer {
 		// la clase RedCofres se inicializa tarde (al enviar el primer paquete) y
 		// owo lanza ServicesFrozenException.
 		RedCofres.inicializar();
+
+		// Comando de administracion y pruebas. Ver ComandoCofre.
+		CommandRegistrationCallback.EVENT.register(
+				(despachador, acceso, entorno) -> ComandoCofre.registrar(despachador));
 
 		LOGGER.info("Mod Cofres Personales inicializado correctamente");
 	}

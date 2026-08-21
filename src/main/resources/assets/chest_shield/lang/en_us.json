@@ -1,6 +1,8 @@
 {
   "block.chest_shield.shielded_chest": "Shielded Chest",
   "container.chest_shield.large_shielded_chest": "Large Shielded Chest",
+  "container.chest_shield.cofre_de": "%s's Chest",
+  "container.chest_shield.cofre_grande_de": "%s's Large Chest",
   "item.chest_shield.master_key": "Master Key",
   "message.chest_shield.protegido": "This chest belongs to %s",
   "message.chest_shield.clave_incorrecta": "Wrong password",

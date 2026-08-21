@@ -251,7 +251,7 @@ public class CofrePersonalBlock extends BaseEntityBlock {
 		// Si nacio siendo mitad de un cofre doble, hereda la clave de su pareja.
 		if (estado.getValue(TYPE) != ChestType.SINGLE
 				&& level.getBlockEntity(pos.relative(direccionUnion(estado))) instanceof CofrePersonalBlockEntity pareja) {
-			cofre.copiarClaveDe(pareja);
+			cofre.copiarAjustesDe(pareja);
 		}
 	}
 

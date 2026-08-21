@@ -1,5 +1,8 @@
 package com.mikkeljck.chestshield.proteccion;
 
+import java.util.List;
+import java.util.UUID;
+
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 
@@ -48,5 +51,21 @@ public interface ContenedorBlindado {
 
 	default void avisar(final Player player, final Component mensaje) {
 		Proteccion.avisar(player, mensaje);
+	}
+
+	default boolean tienePermiso(final Player player) {
+		return this.getProteccion().tienePermiso(player.getUUID());
+	}
+
+	default void agregarPermiso(final UUID jugador, final String nombre) {
+		this.getProteccion().agregarPermiso(jugador, nombre);
+	}
+
+	default boolean quitarPermiso(final UUID jugador) {
+		return this.getProteccion().quitarPermiso(jugador);
+	}
+
+	default List<Ajustes.Permiso> getPermisos() {
+		return this.getProteccion().getPermisos();
 	}
 }

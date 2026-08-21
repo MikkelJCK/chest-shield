@@ -105,7 +105,7 @@ public final class RedCofres {
 				&& estado.getValue(CofrePersonalBlock.TYPE) != ChestType.SINGLE) {
 			BlockPos posPareja = mensaje.pos().relative(CofrePersonalBlock.direccionUnion(estado));
 			if (jugador.level().getBlockEntity(posPareja) instanceof CofrePersonalBlockEntity pareja) {
-				pareja.copiarClaveDe(cofre);
+				pareja.copiarAjustesDe(cofre);
 			}
 		}
 		cofre.avisar(jugador, Component.translatable(mensaje.clave().isBlank()

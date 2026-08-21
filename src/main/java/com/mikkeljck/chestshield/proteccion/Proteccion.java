@@ -1,11 +1,11 @@
 package com.mikkeljck.chestshield.proteccion;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import com.mikkeljck.chestshield.CofresPersonales;
-import com.mikkeljck.chestshield.util.HashClave;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.UUIDUtil;
@@ -19,13 +19,12 @@ import net.minecraft.world.level.storage.ValueOutput;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Todo el estado de proteccion de un contenedor: quien es el dueno, si tiene
- * clave, y quien puede abrirlo.
+ * La proteccion de un contenedor: quien es su dueno, mas los {@link Ajustes}
+ * que dicen quien mas puede abrirlo.
  *
- * Vive fuera del BlockEntity a proposito. Cualquier bloque que quiera ser
- * "blindado" (el cofre hoy, el barril manana) compone una instancia de esta
- * clase e implementa {@link ContenedorBlindado}, en vez de copiar doscientas
- * lineas de logica de permisos.
+ * Vive fuera del BlockEntity a proposito. Cualquier bloque que quiera estar
+ * blindado (el cofre hoy, el barril manana) compone una instancia de esta clase
+ * e implementa {@link ContenedorBlindado}, en vez de copiar la logica entera.
  *
  * IMPORTANTE: las claves del NBT no se pueden renombrar. El mod ya esta
  * publicado y hay mundos con cofres colocados; si cambian, esos jugadores
@@ -33,21 +32,18 @@ import org.jspecify.annotations.Nullable;
  */
 public class Proteccion {
 
-	public static final int LONGITUD_MAXIMA_CLAVE = 32;
+	public static final int LONGITUD_MAXIMA_CLAVE = Ajustes.LONGITUD_MAXIMA_CLAVE;
 
 	/** Ticks de espera tras un intento fallido, para frenar la fuerza bruta. */
 	private static final long ENFRIAMIENTO_TICKS = 40L;
 
-	/** Lo llama el dueno de esta proteccion para marcar el bloque como sucio y sincronizarlo. */
+	/** Lo llama la proteccion para marcar el bloque como sucio y sincronizarlo. */
 	private final Runnable alCambiar;
 
 	private @Nullable UUID propietario;
 	private String nombrePropietario = "";
 
-	/** Solo "tieneClave" viaja al cliente. El hash y el salt JAMAS salen del servidor. */
-	private boolean tieneClave;
-	private String hashClave = "";
-	private String saltClave = "";
+	private final Ajustes ajustes = new Ajustes();
 
 	/** Estado volatil, no se guarda en disco. */
 	private @Nullable UUID invitadoTemporal;
@@ -55,6 +51,16 @@ public class Proteccion {
 
 	public Proteccion(final Runnable alCambiar) {
 		this.alCambiar = alCambiar;
+	}
+
+	/** Los ajustes que rigen este contenedor. De momento siempre los suyos propios. */
+	public Ajustes getAjustes() {
+		return this.ajustes;
+	}
+
+	/** Para uso desde fuera tras modificar los ajustes directamente. */
+	public void marcarCambiado() {
+		this.alCambiar.run();
 	}
 
 	// ---------- Propiedad ----------
@@ -85,7 +91,8 @@ public class Proteccion {
 	}
 
 	/**
-	 * Acceso sin contrasena: el dueno, o un admin con la Llave Maestra.
+	 * Acceso sin contrasena: el dueno, quien esta en la lista de permisos, o un
+	 * admin con la Llave Maestra.
 	 *
 	 * El nivel de op solo se puede comprobar en el servidor. En el cliente somos
 	 * optimistas para que la interfaz responda bien; el servidor tiene siempre la
@@ -93,6 +100,9 @@ public class Proteccion {
 	 */
 	public boolean puedeAcceder(final Player player) {
 		if (this.esPropietario(player)) {
+			return true;
+		}
+		if (this.ajustes.tienePermiso(player.getUUID())) {
 			return true;
 		}
 		if (!sostieneLlaveMaestra(player)) {
@@ -113,29 +123,43 @@ public class Proteccion {
 		}
 	}
 
+	// ---------- Permisos ----------
+
+	public boolean tienePermiso(final UUID jugador) {
+		return this.ajustes.tienePermiso(jugador);
+	}
+
+	public void agregarPermiso(final UUID jugador, final String nombre) {
+		this.ajustes.agregarPermiso(jugador, nombre);
+		this.alCambiar.run();
+	}
+
+	public boolean quitarPermiso(final UUID jugador) {
+		boolean quitado = this.ajustes.quitarPermiso(jugador);
+		if (quitado) {
+			this.alCambiar.run();
+		}
+		return quitado;
+	}
+
+	public List<Ajustes.Permiso> getPermisos() {
+		return this.ajustes.getPermisos();
+	}
+
 	// ---------- Contrasena ----------
 
 	public boolean tieneClave() {
-		return this.tieneClave;
+		return this.ajustes.tieneClave();
 	}
 
-	/** Cadena vacia = quitar la contrasena. Solo debe llamarse en el servidor. */
 	public void establecerClave(final String clave) {
-		if (clave.isBlank()) {
-			this.tieneClave = false;
-			this.hashClave = "";
-			this.saltClave = "";
-		} else {
-			this.saltClave = HashClave.nuevoSalt();
-			this.hashClave = HashClave.calcular(clave, this.saltClave);
-			this.tieneClave = true;
-		}
+		this.ajustes.establecerClave(clave);
 		this.esperaHasta.clear();
 		this.alCambiar.run();
 	}
 
 	public boolean verificarClave(final String clave) {
-		return HashClave.coincide(clave, this.saltClave, this.hashClave);
+		return this.ajustes.verificarClave(clave);
 	}
 
 	public boolean enEspera(final Player player, final long tiempoActual) {
@@ -165,7 +189,7 @@ public class Proteccion {
 	 * OJO CON EL ORDEN: al colocar un bloque, los vecinos reciben la
 	 * actualizacion ANTES de que setPlacedBy le asigne dueno y clave al recien
 	 * puesto. Por eso un cofre sin estrenar (dueno nulo, sin clave) cuenta como
-	 * compatible: su dueno y su clave se deciden un instante despues. La
+	 * compatible: su dueno y sus ajustes se deciden un instante despues. La
 	 * seguridad no se pierde porque getStateForPlacement ya comprobo que quien lo
 	 * coloco era el dueno del vecino.
 	 */
@@ -174,25 +198,19 @@ public class Proteccion {
 				&& !this.propietario.equals(otra.propietario)) {
 			return false;
 		}
-		// Claves: o alguna esta vacia (esa heredara la de la otra), o son identicas.
-		if (!this.tieneClave || !otra.tieneClave) {
-			return true;
-		}
-		return this.hashClave.equals(otra.hashClave) && this.saltClave.equals(otra.saltClave);
+		return this.ajustes.claveCompatibleCon(otra.ajustes);
 	}
 
 	/**
-	 * Copia tal cual la clave de la otra mitad, incluido el caso de "sin clave".
+	 * Copia los ajustes de la otra mitad tal cual.
 	 *
 	 * Un cofre doble es un solo mueble para el jugador, asi que las dos mitades
-	 * deben compartir siempre la misma clave. Se copian hash y salt en vez de
-	 * volver a calcularlos, para que ambas queden identicas y sigan contando como
+	 * comparten clave, permisos y tolvas. Se copian hash y salt en vez de volver
+	 * a calcularlos, para que ambas queden identicas y sigan contando como
 	 * compatibles.
 	 */
-	public void copiarClaveDe(final Proteccion otra) {
-		this.tieneClave = otra.tieneClave;
-		this.hashClave = otra.hashClave;
-		this.saltClave = otra.saltClave;
+	public void copiarAjustesDe(final Proteccion otra) {
+		this.ajustes.copiarDe(otra.ajustes);
 		this.esperaHasta.clear();
 		this.alCambiar.run();
 	}
@@ -204,31 +222,38 @@ public class Proteccion {
 			output.store("Propietario", UUIDUtil.CODEC, this.propietario);
 			output.putString("NombrePropietario", this.nombrePropietario);
 		}
-		output.putBoolean("TieneClave", this.tieneClave);
-		if (this.tieneClave) {
-			output.putString("HashClave", this.hashClave);
-			output.putString("SaltClave", this.saltClave);
-		}
+		this.ajustes.guardar(output);
 	}
 
 	public void cargar(final ValueInput input) {
 		this.propietario = input.read("Propietario", UUIDUtil.CODEC).orElse(null);
 		this.nombrePropietario = input.getStringOr("NombrePropietario", "");
-		this.tieneClave = input.getBooleanOr("TieneClave", false);
-		this.hashClave = input.getStringOr("HashClave", "");
-		this.saltClave = input.getStringOr("SaltClave", "");
+		this.ajustes.cargar(input);
 	}
 
 	/**
-	 * Lo unico que viaja al cliente: dueno y si hay clave o no. El inventario, el
-	 * hash y el salt JAMAS se envian, porque el cliente no debe poder leer ni el
-	 * contenido de un cofre ajeno ni nada que sirva para romper la clave.
+	 * Lo que viaja al cliente: dueno, si hay clave, la lista de permisos y los
+	 * flags de tolvas.
+	 *
+	 * El inventario, el hash y el salt JAMAS se envian: el cliente no debe poder
+	 * leer ni el contenido de un cofre ajeno ni nada que sirva para romper la
+	 * clave. La lista de permisos si va, porque el cliente la necesita para dos
+	 * cosas: saber si debe pedir la contrasena al abrir, y pintarla en la
+	 * pantalla de configuracion. No contiene ningun secreto, pero si es
+	 * informacion publica: cualquiera cerca del cofre puede ver quien tiene
+	 * acceso.
 	 */
 	public void escribirUpdateTag(final CompoundTag tag) {
 		if (this.propietario != null) {
 			tag.store("Propietario", UUIDUtil.CODEC, this.propietario);
 			tag.putString("NombrePropietario", this.nombrePropietario);
 		}
-		tag.putBoolean("TieneClave", this.tieneClave);
+		tag.putBoolean("TieneClave", this.ajustes.tieneClave());
+		List<Ajustes.Permiso> permisos = this.ajustes.getPermisos();
+		if (!permisos.isEmpty()) {
+			tag.store("Permisos", Ajustes.Permiso.LISTA, permisos);
+		}
+		tag.putBoolean("TolvasMeter", this.ajustes.tolvasPuedenMeter());
+		tag.putBoolean("TolvasSacar", this.ajustes.tolvasPuedenSacar());
 	}
 }
