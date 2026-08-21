@@ -1,0 +1,52 @@
+package com.mikkeljck.chestshield.proteccion;
+
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Player;
+
+/**
+ * Lo implementa cualquier BlockEntity que quiera estar protegido.
+ *
+ * Solo obliga a exponer la {@link Proteccion}; el resto son atajos que se
+ * heredan gratis. Asi el cofre de hoy y el barril de manana comparten la misma
+ * logica de permisos sin duplicar una linea.
+ */
+public interface ContenedorBlindado {
+
+	Proteccion getProteccion();
+
+	default void asignarPropietario(final Player player) {
+		this.getProteccion().asignarPropietario(player);
+	}
+
+	default String getNombrePropietario() {
+		return this.getProteccion().getNombrePropietario();
+	}
+
+	default boolean esPropietario(final Player player) {
+		return this.getProteccion().esPropietario(player);
+	}
+
+	default boolean puedeAcceder(final Player player) {
+		return this.getProteccion().puedeAcceder(player);
+	}
+
+	default boolean tieneClave() {
+		return this.getProteccion().tieneClave();
+	}
+
+	default void establecerClave(final String clave) {
+		this.getProteccion().establecerClave(clave);
+	}
+
+	default boolean verificarClave(final String clave) {
+		return this.getProteccion().verificarClave(clave);
+	}
+
+	default void avisarPropiedad(final Player player) {
+		this.getProteccion().avisarPropiedad(player);
+	}
+
+	default void avisar(final Player player, final Component mensaje) {
+		Proteccion.avisar(player, mensaje);
+	}
+}
