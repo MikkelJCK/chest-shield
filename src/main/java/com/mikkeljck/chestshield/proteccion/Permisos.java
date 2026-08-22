@@ -1,48 +1,46 @@
 package com.mikkeljck.chestshield.proteccion;
 
-import com.mikkeljck.chestshield.CofresPersonales;
-
-import net.fabricmc.fabric.api.permission.v1.PermissionNode;
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.permissions.PermissionLevel;
+import net.minecraft.server.permissions.Permissions;
 import net.minecraft.world.entity.player.Player;
 
 /**
- * Los permisos de administracion del mod.
+ * Quien puede administrar cofres ajenos.
  *
- * Hasta ahora la Llave Maestra solo miraba el nivel de op, y eso deja fuera a
- * cualquier servidor que reparta permisos por rangos. Con un nodo propio, un
- * gestor de permisos puede dar la llave a un rango de staff sin tener que darle
- * op, que es justo lo que se quiere evitar.
+ * Existe para tener la decision en UN solo sitio: la usan la Llave Maestra y el
+ * bypass de administrador del comando. Hoy es simplemente el nivel de op, pero
+ * si algun dia se cambia, se cambia aqui y en ningun sitio mas.
  *
- * El nivel de op sigue funcionando como respaldo: si nadie responde al nodo, se
- * exige op 2. Asi un servidor sin gestor de permisos se comporta igual que antes
- * y no hay que configurar nada.
+ * NOTA sobre gestores de permisos (probado y descartado el 2026-08-22):
+ * se intento con la API de permisos de Fabric (fabric-permission-api-v1), con un
+ * nodo chest_shield:master_key y op 2 de respaldo. LuckPerms tenia el nodo
+ * concedido y resolvia true al comprobarlo, pero el mod seguia sin verlo: esa
+ * API es demasiado nueva y LuckPerms todavia no la puentea. Se quito para no
+ * arrastrar codigo que no hace nada ni prometerlo en la ficha del mod.
  *
- * Nodo: chest_shield:master_key
+ * Si se retoma, el camino es la libreria de permisos de lucko
+ * (me.lucko:fabric-permissions-api-v0), que es la que LuckPerms si lee en
+ * Fabric. Se puede empaquetar dentro del jar para no anadir una dependencia que
+ * el jugador tenga que instalar.
  */
 public final class Permisos {
-
-	public static final PermissionNode<Boolean> LLAVE_MAESTRA =
-			PermissionNode.of(CofresPersonales.MOD_ID, "master_key");
-
-	/** Sin gestor de permisos, hace falta op 2. */
-	private static final PermissionLevel RESPALDO = PermissionLevel.GAMEMASTERS;
 
 	private Permisos() {
 	}
 
 	/**
-	 * Si este jugador puede abrir cofres ajenos con la Llave Maestra.
+	 * Si este jugador puede abrir y administrar cofres ajenos.
 	 *
 	 * Solo se puede resolver en el servidor. En el cliente somos optimistas para
 	 * que la interfaz responda bien; el servidor tiene siempre la ultima palabra.
 	 */
-	public static boolean puedeUsarLlaveMaestra(final Player jugador) {
-		if (!(jugador instanceof ServerPlayer servidorJugador)) {
-			return true;
-		}
-		return servidorJugador.createCommandSourceStack()
-				.checkPermission(LLAVE_MAESTRA.key(), RESPALDO);
+	public static boolean esAdministrador(final Player jugador) {
+		return !(jugador instanceof ServerPlayer servidorJugador)
+				|| esAdministrador(servidorJugador.createCommandSourceStack());
+	}
+
+	public static boolean esAdministrador(final CommandSourceStack fuente) {
+		return fuente.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER);
 	}
 }

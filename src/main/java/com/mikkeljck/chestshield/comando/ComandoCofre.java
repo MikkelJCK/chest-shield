@@ -15,7 +15,6 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.permissions.PermissionLevel;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import org.jspecify.annotations.Nullable;
@@ -139,10 +138,9 @@ public final class ComandoCofre {
 			throws CommandSyntaxException {
 		CofrePersonalBlockEntity cofre = cofreMirado(contexto);
 		ServerPlayer jugador = contexto.getSource().getPlayerOrException();
-		// Mismo permiso que la Llave Maestra: quien puede abrir cofres ajenos
+		// Mismo criterio que la Llave Maestra: quien puede abrir cofres ajenos
 		// tambien puede administrarlos por comando.
-		boolean admin = contexto.getSource().checkPermission(Permisos.LLAVE_MAESTRA.key(),
-				PermissionLevel.GAMEMASTERS);
+		boolean admin = Permisos.esAdministrador(contexto.getSource());
 		if (!cofre.puedeGestionar(jugador) && !admin) {
 			throw NO_ERES_EL_DUENO.create();
 		}

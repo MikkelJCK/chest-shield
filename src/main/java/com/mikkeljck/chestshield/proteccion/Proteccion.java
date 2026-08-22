@@ -141,9 +141,9 @@ public class Proteccion {
 		return this.esPropietario(player) || this.esAdminConLlave(player);
 	}
 
-	/** Tener la llave en la mano no basta: hace falta el permiso. Ver {@link Permisos}. */
+	/** Tener la llave en la mano no basta: hace falta ser admin. Ver {@link Permisos}. */
 	private boolean esAdminConLlave(final Player player) {
-		return sostieneLlaveMaestra(player) && Permisos.puedeUsarLlaveMaestra(player);
+		return sostieneLlaveMaestra(player) && Permisos.esAdministrador(player);
 	}
 
 	/**
