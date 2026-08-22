@@ -3,14 +3,19 @@ package com.mikkeljck.chestshield.block;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiPredicate;
+import java.util.function.Consumer;
 
 import com.mikkeljck.chestshield.CofresPersonales;
+import com.mikkeljck.chestshield.red.RedCofres;
 import com.mojang.serialization.MapCodec;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.Containers;
+import net.minecraft.world.WorldlyContainer;
+import net.minecraft.world.WorldlyContainerHolder;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.animal.feline.Cat;
@@ -43,7 +48,7 @@ import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jspecify.annotations.Nullable;
 
-public class CofrePersonalBlock extends BaseEntityBlock {
+public class CofrePersonalBlock extends BaseEntityBlock implements WorldlyContainerHolder {
 
 	public static final MapCodec<CofrePersonalBlock> CODEC = simpleCodec(CofrePersonalBlock::new);
 
@@ -201,6 +206,68 @@ public class CofrePersonalBlock extends BaseEntityBlock {
 				: FORMAS_MITAD.get(direccionUnion(estado));
 	}
 
+	/**
+	 * Aplica algo a este cofre y, si es doble, tambien a su otra mitad.
+	 *
+	 * Un cofre doble es un solo mueble para el jugador: clave, permisos y tolvas
+	 * tienen que quedar iguales en las dos mitades. Lo usan el comando y los
+	 * paquetes de la interfaz, para no repetir la busqueda de la pareja.
+	 */
+	public static void paraAmbasMitades(final CofrePersonalBlockEntity cofre,
+			final Consumer<CofrePersonalBlockEntity> accion) {
+		accion.accept(cofre);
+		Level nivel = cofre.getLevel();
+		if (nivel == null) {
+			return;
+		}
+		BlockState estado = cofre.getBlockState();
+		if (!(estado.getBlock() instanceof CofrePersonalBlock)
+				|| estado.getValue(TYPE) == ChestType.SINGLE) {
+			return;
+		}
+		BlockPos posPareja = cofre.getBlockPos().relative(direccionUnion(estado));
+		if (nivel.getBlockEntity(posPareja) instanceof CofrePersonalBlockEntity pareja) {
+			accion.accept(pareja);
+		}
+	}
+
+	// ---------- Tolvas ----------
+
+	/**
+	 * Que ve una tolva o una tuberia cuando mira este bloque.
+	 *
+	 * La tolva de vanilla busca primero un WorldlyContainerHolder en el BLOQUE, y
+	 * solo si no lo encuentra usa el BlockEntity. El caso especial que une las
+	 * dos mitades de un cofre esta escrito para ChestBlock y ChestBlockEntity, y
+	 * este cofre no es ninguno de los dos, asi que sin esto cada mitad quedaba
+	 * aislada con sus 27 huecos: una tolva bajo una mitad no alcanzaba lo que
+	 * habia en la otra.
+	 *
+	 * El orden de las mitades es el mismo que usa el menu del jugador (RIGHT es
+	 * la primera), para que el hueco 0 de la tolva y el hueco 0 de la pantalla
+	 * sean el mismo.
+	 *
+	 * A diferencia de abrir el cofre, aqui NO se mira si hay un bloque encima:
+	 * en vanilla las tolvas siguen funcionando con un cofre tapado, y solo se
+	 * bloquea la apertura por parte de un jugador.
+	 */
+	@Override
+	public WorldlyContainer getContainer(final BlockState estado, final LevelAccessor level, final BlockPos pos) {
+		if (!(level.getBlockEntity(pos) instanceof CofrePersonalBlockEntity cofre)) {
+			return ContenedorDobleBlindado.VACIO;
+		}
+		ChestType tipo = estado.getValue(TYPE);
+		if (tipo == ChestType.SINGLE) {
+			return cofre;
+		}
+		if (!(level.getBlockEntity(pos.relative(direccionUnion(estado))) instanceof CofrePersonalBlockEntity pareja)) {
+			return cofre;
+		}
+		return tipo == ChestType.RIGHT
+				? new ContenedorDobleBlindado(cofre, pareja)
+				: new ContenedorDobleBlindado(pareja, cofre);
+	}
+
 	// ---------- Bloqueo por arriba ----------
 
 	/**
@@ -251,7 +318,7 @@ public class CofrePersonalBlock extends BaseEntityBlock {
 		// Si nacio siendo mitad de un cofre doble, hereda la clave de su pareja.
 		if (estado.getValue(TYPE) != ChestType.SINGLE
 				&& level.getBlockEntity(pos.relative(direccionUnion(estado))) instanceof CofrePersonalBlockEntity pareja) {
-			cofre.copiarClaveDe(pareja);
+			cofre.copiarAjustesDe(pareja);
 		}
 	}
 
@@ -265,16 +332,17 @@ public class CofrePersonalBlock extends BaseEntityBlock {
 			return InteractionResult.SUCCESS;
 		}
 		if (level.getBlockEntity(pos) instanceof CofrePersonalBlockEntity cofre) {
-			// Agachado + dueno significa "configurar contrasena", nunca "abrir".
-			if (jugador.isShiftKeyDown() && cofre.esPropietario(jugador)) {
-				return InteractionResult.SUCCESS;
-			}
-			if (cofre.puedeAcceder(jugador)) {
+			// El agachado ya no significa nada especial: la configuracion vive
+			// dentro del cofre abierto, y asi se recupera el comportamiento de
+			// vanilla (colocar bloques y marcos contra el cofre).
+			if (cofre.puedeAbrir(jugador)) {
 				AperturaCofre.abrir(jugador, level, pos, estado, false);
-			} else if (!cofre.tieneClave()) {
+			} else if (cofre.tieneClave() && jugador instanceof ServerPlayer servidorJugador) {
+				// Es el servidor quien decide pedir la clave, no el cliente.
+				RedCofres.pedirClave(servidorJugador, pos, cofre.getNombrePropietario());
+			} else {
 				cofre.avisarPropiedad(jugador);
 			}
-			// Con clave no hacemos nada: el cliente ya abrio la pantalla.
 		}
 		return InteractionResult.SUCCESS;
 	}
@@ -282,7 +350,7 @@ public class CofrePersonalBlock extends BaseEntityBlock {
 	@Override
 	protected float getDestroyProgress(final BlockState estado, final Player jugador, final BlockGetter level,
 			final BlockPos pos) {
-		if (level.getBlockEntity(pos) instanceof CofrePersonalBlockEntity cofre && !cofre.puedeAcceder(jugador)) {
+		if (level.getBlockEntity(pos) instanceof CofrePersonalBlockEntity cofre && !cofre.puedeGestionar(jugador)) {
 			return 0.0F;
 		}
 		return super.getDestroyProgress(estado, jugador, level, pos);
@@ -291,7 +359,7 @@ public class CofrePersonalBlock extends BaseEntityBlock {
 	@Override
 	protected void attack(final BlockState estado, final Level level, final BlockPos pos, final Player jugador) {
 		if (!level.isClientSide() && level.getBlockEntity(pos) instanceof CofrePersonalBlockEntity cofre
-				&& !cofre.puedeAcceder(jugador)) {
+				&& !cofre.puedeGestionar(jugador)) {
 			cofre.avisarPropiedad(jugador);
 		}
 		super.attack(estado, level, pos, jugador);
@@ -302,7 +370,7 @@ public class CofrePersonalBlock extends BaseEntityBlock {
 	public BlockState playerWillDestroy(final Level level, final BlockPos pos, final BlockState estado,
 			final Player jugador) {
 		if (!level.isClientSide() && level.getBlockEntity(pos) instanceof CofrePersonalBlockEntity cofre
-				&& cofre.puedeAcceder(jugador)) {
+				&& cofre.puedeGestionar(jugador)) {
 			Containers.dropContents(level, pos, cofre.getInventario());
 		}
 		return super.playerWillDestroy(level, pos, estado, jugador);

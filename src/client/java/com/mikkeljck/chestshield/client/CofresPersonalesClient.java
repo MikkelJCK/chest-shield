@@ -1,62 +1,93 @@
 package com.mikkeljck.chestshield.client;
 
 import com.mikkeljck.chestshield.CofresPersonales;
-import com.mikkeljck.chestshield.block.CofrePersonalBlock;
 import com.mikkeljck.chestshield.block.CofrePersonalBlockEntity;
+import com.mikkeljck.chestshield.client.boton.BotonCandado;
+import com.mikkeljck.chestshield.client.boton.CofreAbiertoActual;
 import com.mikkeljck.chestshield.client.pantalla.PantallaClave;
-import com.mikkeljck.chestshield.client.pantalla.PantallaConfigClave;
+import com.mikkeljck.chestshield.client.pantalla.PantallaConfigCofre;
 import com.mikkeljck.chestshield.client.render.CofrePersonalRenderer;
+import com.mikkeljck.chestshield.red.RedCofres;
 
 import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.fabric.api.event.player.UseBlockCallback;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
+import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderers;
-import net.minecraft.world.InteractionResult;
+import net.minecraft.core.BlockPos;
 
 public class CofresPersonalesClient implements ClientModInitializer {
+
+	/** Ancho del fondo de la pantalla de cofre en vanilla. */
+	private static final int ANCHO_PANEL = 176;
+
+	/** El panel mide 114 px mas 18 por cada fila de huecos. */
+	private static final int ALTO_BASE_PANEL = 114;
+	private static final int ALTO_FILA = 18;
+
+	/** Separacion del boton respecto al borde izquierdo del panel. */
+	private static final int HUECO_BOTON = 4;
 
 	@Override
 	public void onInitializeClient() {
 		BlockEntityRenderers.register(CofresPersonales.COFRE_PERSONAL_BE, CofrePersonalRenderer::new);
 
-		// Las pantallas se abren en el cliente, sin pedirle nada al servidor: el
-		// cliente ya sabe quien es el dueno y si el cofre tiene clave, porque eso
-		// viaja en el paquete de sincronizacion del BlockEntity.
-		UseBlockCallback.EVENT.register((player, level, hand, hitResult) -> {
-			if (!level.isClientSide()) {
-				return InteractionResult.PASS;
-			}
-			if (!(level.getBlockEntity(hitResult.getBlockPos()) instanceof CofrePersonalBlockEntity cofre)) {
-				return InteractionResult.PASS;
-			}
-			// Bloqueado por arriba: no abrimos ninguna pantalla, igual que vanilla.
-			if (CofrePersonalBlock.parejaBloqueada(level, hitResult.getBlockPos(),
-					level.getBlockState(hitResult.getBlockPos()))) {
-				return InteractionResult.PASS;
-			}
+		// El servidor decide cuando hay que pedir la contrasena; aqui solo se abre
+		// la pantalla. Los manejadores van en codigo de cliente porque tocan
+		// Minecraft.getInstance(); en comun solo se declaran los tipos de paquete.
+		ClientPlayNetworking.registerGlobalReceiver(RedCofres.PedirClave.TIPO, (mensaje, contexto) ->
+				contexto.client().setScreen(
+						new PantallaClave(mensaje.pos(), mensaje.nombreDueno())));
 
-			// El dueno agachado abre la configuracion de contrasena.
-			if (cofre.esPropietario(player) && player.isShiftKeyDown()) {
-				Minecraft.getInstance().setScreen(
-						new PantallaConfigClave(hitResult.getBlockPos(), cofre.tieneClave()));
-				// FAIL, no SUCCESS: SUCCESS cancela el procesado local pero IGUAL
-				// manda el paquete al servidor, que abriria el cofre encima de
-				// nuestra pantalla.
-				return InteractionResult.FAIL;
-			}
+		ClientPlayNetworking.registerGlobalReceiver(RedCofres.CofreAbierto.TIPO, (mensaje, contexto) ->
+				CofreAbiertoActual.establecer(mensaje.pos()));
 
-			// Jugador ajeno + cofre con clave: pedimos la contrasena.
-			// FAIL evita que el paquete llegue al servidor hasta que el jugador
-			// escriba algo.
-			boolean pareceAutorizado = cofre.esPropietario(player)
-					|| CofrePersonalBlockEntity.sostieneLlaveMaestra(player);
-			if (!pareceAutorizado && cofre.tieneClave()) {
-				Minecraft.getInstance().setScreen(
-						new PantallaClave(hitResult.getBlockPos(), cofre.getNombrePropietario()));
-				return InteractionResult.FAIL;
+		ScreenEvents.AFTER_INIT.register((cliente, pantalla, ancho, alto) -> {
+			if (pantalla instanceof ContainerScreen cofre) {
+				anadirBotonSiEsNuestro(cofre, ancho, alto);
+				// Al cerrar el cofre se olvida la posicion, para no arrastrarla a
+				// la siguiente pantalla que se abra.
+				ScreenEvents.remove(pantalla).register(cerrada -> CofreAbiertoActual.limpiar());
 			}
-
-			return InteractionResult.PASS;
 		});
+	}
+
+	/**
+	 * Anade el candado a la pantalla del cofre, solo si es un cofre blindado
+	 * nuestro y quien mira es su dueno.
+	 *
+	 * Se usa la pantalla de cofre de VANILLA, sin reemplazarla ni crear un
+	 * MenuType propio: asi los mods de ordenar inventario la siguen reconociendo.
+	 *
+	 * El boton va pegado al borde izquierdo, por fuera del marco. Arriba a la
+	 * derecha no, que es donde dibujan los suyos Inventory Profiles Next y
+	 * companiaa.
+	 */
+	private static void anadirBotonSiEsNuestro(final ContainerScreen pantalla, final int ancho, final int alto) {
+		Minecraft cliente = Minecraft.getInstance();
+		BlockPos pos = CofreAbiertoActual.obtener();
+		if (pos == null || cliente.level == null || cliente.player == null) {
+			return;
+		}
+		if (!(cliente.level.getBlockEntity(pos) instanceof CofrePersonalBlockEntity cofre)) {
+			return;
+		}
+		if (!cofre.esPropietario(cliente.player)) {
+			return;
+		}
+
+		// AbstractContainerScreen guarda estas dos posiciones, pero protegidas.
+		// Se recalculan igual que hace el juego, y asi nos ahorramos un mixin.
+		int altoPanel = ALTO_BASE_PANEL + pantalla.getMenu().getRowCount() * ALTO_FILA;
+		int izquierda = (ancho - ANCHO_PANEL) / 2;
+		int arriba = (alto - altoPanel) / 2;
+
+		// getWidgets, no getButtons: en fabric-screen-api-v1 5.x se renombro.
+		Screens.getWidgets(pantalla).add(new BotonCandado(
+				izquierda - BotonCandado.LADO - HUECO_BOTON,
+				arriba + 8,
+				boton -> cliente.setScreen(new PantallaConfigCofre(pantalla, pos))));
 	}
 }

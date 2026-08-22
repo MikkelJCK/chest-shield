@@ -1,5 +1,7 @@
 package com.mikkeljck.chestshield.block;
 
+import com.mikkeljck.chestshield.red.RedCofres;
+
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.CompoundContainer;
@@ -71,6 +73,14 @@ public final class AperturaCofre {
 			return;
 		}
 
+		// Si entro por un permiso pendiente, ahora si tenemos su UUID: se convierte
+		// en un permiso normal y deja de depender del nombre.
+		if (level.getBlockEntity(pos) instanceof CofrePersonalBlockEntity cofre) {
+			CofrePersonalBlock.paraAmbasMitades(cofre,
+					mitad -> mitad.getProteccion().resolverPendiente(jugador));
+		}
+
+		RedCofres.avisarCofreAbierto(servidorJugador, pos);
 		servidorJugador.openMenu(proveedor);
 	}
 
@@ -80,7 +90,7 @@ public final class AperturaCofre {
 		if (!(level.getBlockEntity(pos) instanceof CofrePersonalBlockEntity cofre)) {
 			return false;
 		}
-		if (!cofre.puedeAcceder(jugador)) {
+		if (!cofre.puedeAbrir(jugador)) {
 			return false;
 		}
 		if (estado.getValue(CofrePersonalBlock.TYPE) == ChestType.SINGLE) {
@@ -88,7 +98,7 @@ public final class AperturaCofre {
 		}
 		BlockPos posPareja = pos.relative(CofrePersonalBlock.direccionUnion(estado));
 		return !(level.getBlockEntity(posPareja) instanceof CofrePersonalBlockEntity pareja)
-				|| pareja.puedeAcceder(jugador);
+				|| pareja.puedeAbrir(jugador);
 	}
 
 	private static MenuProvider proveedorSimple(final CofrePersonalBlockEntity cofre) {
@@ -111,7 +121,10 @@ public final class AperturaCofre {
 		return new MenuProvider() {
 			@Override
 			public Component getDisplayName() {
-				return Component.translatable("container.chest_shield.large_shielded_chest");
+				return primero.getProteccion().getPropietario() == null
+						? Component.translatable("container.chest_shield.large_shielded_chest")
+						: Component.translatable("container.chest_shield.cofre_grande_de",
+								primero.getNombreMostrado());
 			}
 
 			@Override

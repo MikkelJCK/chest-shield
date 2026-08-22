@@ -1,10 +1,12 @@
 package com.mikkeljck.chestshield;
 
 import com.mikkeljck.chestshield.block.CofrePersonalBlock;
+import com.mikkeljck.chestshield.comando.ComandoCofre;
 import com.mikkeljck.chestshield.block.CofrePersonalBlockEntity;
 import com.mikkeljck.chestshield.red.RedCofres;
 
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.creativetab.v1.CreativeModeTabEvents;
 import net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityTypeBuilder;
@@ -83,19 +85,20 @@ public class CofresPersonales implements ModInitializer {
 
 		// Bloqueo de rotura: cubre tambien modo creativo, donde getDestroyProgress no aplica
 		PlayerBlockBreakEvents.BEFORE.register((level, player, pos, state, blockEntity) -> {
-			if (blockEntity instanceof CofrePersonalBlockEntity cofre && !cofre.puedeAcceder(player)) {
+			if (blockEntity instanceof CofrePersonalBlockEntity cofre && !cofre.puedeGestionar(player)) {
 				cofre.avisarPropiedad(player);
 				return false;
 			}
 			return true;
 		});
 
-		// El canal de red se registra en codigo comun a proposito: owo exige que
-		// cliente y servidor declaren los mismos paquetes, y ademas SOLO permite
-		// registrarlos durante la inicializacion del mod. Si esta llamada falta,
-		// la clase RedCofres se inicializa tarde (al enviar el primer paquete) y
-		// owo lanza ServicesFrozenException.
+		// Los tipos de paquete se declaran en codigo comun a proposito: cliente y
+		// servidor tienen que conocer los mismos, o el saludo inicial no cuadra.
 		RedCofres.inicializar();
+
+		// Comando de administracion y pruebas. Ver ComandoCofre.
+		CommandRegistrationCallback.EVENT.register(
+				(despachador, acceso, entorno) -> ComandoCofre.registrar(despachador));
 
 		LOGGER.info("Mod Cofres Personales inicializado correctamente");
 	}

@@ -1,25 +1,20 @@
 package com.mikkeljck.chestshield.block;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 
 import com.mikkeljck.chestshield.CofresPersonales;
-import com.mikkeljck.chestshield.util.HashClave;
+import com.mikkeljck.chestshield.proteccion.ContenedorBlindado;
+import com.mikkeljck.chestshield.proteccion.Proteccion;
 
-import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
-import net.minecraft.core.UUIDUtil;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.permissions.Permissions;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -28,6 +23,7 @@ import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.WorldlyContainer;
 import net.minecraft.world.entity.ContainerUser;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -49,18 +45,35 @@ import org.jspecify.annotations.Nullable;
 /**
  * Entidad del Cofre Personal.
  *
- * IMPORTANTE: esta clase NO implementa Container a proposito. Las tolvas y las
- * tuberias de otros mods buscan un Container en el BlockEntity; al no exponerlo,
- * el cofre queda sellado para cualquier automatizacion. El inventario real vive
- * en un SimpleContainer interno que solo se entrega al menu del jugador.
+ * El inventario real vive en un SimpleContainer interno, que es el unico que se
+ * entrega al menu del jugador. El BlockEntity implementa WorldlyContainer por
+ * separado y con puerta: mientras el dueno no active las tolvas, no expone
+ * ningun hueco y no devuelve ningun item, asi que las tolvas y las tuberias de
+ * otros mods lo ven como una caja vacia e intocable. Al activarlas, la Fabric
+ * Transfer API envuelve este Container sola y funciona con Create, AE2 y
+ * companiaa sin escribir codigo para cada mod.
+ *
+ * Toda la logica de permisos vive en {@link Proteccion}; aqui solo queda lo que
+ * es propio de un cofre: el inventario, la tapa animada y el sonido.
  */
-public class CofrePersonalBlockEntity extends BlockEntity implements MenuProvider, LidBlockEntity {
+public class CofrePersonalBlockEntity extends BlockEntity
+		implements MenuProvider, LidBlockEntity, ContenedorBlindado, WorldlyContainer {
 
 	public static final int TAMANO = 27;
-	public static final int LONGITUD_MAXIMA_CLAVE = 32;
+	public static final int LONGITUD_MAXIMA_CLAVE = Proteccion.LONGITUD_MAXIMA_CLAVE;
 
-	/** Ticks de espera tras un intento fallido, para frenar la fuerza bruta. */
-	private static final long ENFRIAMIENTO_TICKS = 40L;
+	private static final int[] SIN_HUECOS = new int[0];
+	private static final int[] TODOS_LOS_HUECOS = crearHuecos();
+
+	private static int[] crearHuecos() {
+		int[] huecos = new int[TAMANO];
+		for (int i = 0; i < TAMANO; i++) {
+			huecos[i] = i;
+		}
+		return huecos;
+	}
+
+	private final Proteccion proteccion = new Proteccion(this::alCambiarProteccion);
 
 	private final SimpleContainer inventario = new SimpleContainer(TAMANO) {
 		// El menu llama a estos dos al abrirse y cerrarse. Son nuestra unica
@@ -93,18 +106,6 @@ public class CofrePersonalBlockEntity extends BlockEntity implements MenuProvide
 							CofrePersonalBlockEntity.this.worldPosition.getZ() + 0.5) <= 64.0;
 		}
 	};
-
-	private @Nullable UUID propietario;
-	private String nombrePropietario = "";
-
-	/** Se sincroniza al cliente. El hash y el salt JAMAS salen del servidor. */
-	private boolean tieneClave;
-	private String hashClave = "";
-	private String saltClave = "";
-
-	/** Estado volatil, no se guarda en disco. */
-	private @Nullable UUID invitadoTemporal;
-	private final Map<UUID, Long> esperaHasta = new HashMap<>();
 
 	/** Animacion de la tapa: el controlador vive en el cliente, el contador en el servidor. */
 	private final ChestLidController controladorTapa = new ChestLidController();
@@ -175,11 +176,15 @@ public class CofrePersonalBlockEntity extends BlockEntity implements MenuProvide
 		super(CofresPersonales.COFRE_PERSONAL_BE, pos, state);
 	}
 
-	// ---------- Propiedad ----------
+	// ---------- Proteccion ----------
 
-	public void asignarPropietario(final Player player) {
-		this.propietario = player.getUUID();
-		this.nombrePropietario = player.getName().getString();
+	@Override
+	public Proteccion getProteccion() {
+		return this.proteccion;
+	}
+
+	/** Lo llama la Proteccion cada vez que cambia algo que hay que persistir y sincronizar. */
+	private void alCambiarProteccion() {
 		this.setChanged();
 		this.sincronizarConClientes();
 	}
@@ -190,127 +195,117 @@ public class CofrePersonalBlockEntity extends BlockEntity implements MenuProvide
 		}
 	}
 
-	public String getNombrePropietario() {
-		return this.nombrePropietario.isEmpty() ? "desconocido" : this.nombrePropietario;
+	// ---------- Tolvas y automatizacion ----------
+	// Solo esta seccion implementa WorldlyContainer. Con las dos casillas
+	// apagadas el cofre miente a conciencia: dice tener 27 huecos pero todos
+	// vacios, y rechaza cualquier intento de meter o sacar. Asi ningun mod puede
+	// tocarlo, ni siquiera los que ignoran getSlotsForFace y van directos al
+	// Container. El menu del jugador no pasa por aqui: usa el SimpleContainer.
+
+	private boolean puedeMeter() {
+		return this.proteccion.getAjustes().tolvasPuedenMeter();
 	}
 
-	public boolean esPropietario(final Player player) {
-		return this.propietario == null || this.propietario.equals(player.getUUID());
+	private boolean puedeSacar() {
+		return this.proteccion.getAjustes().tolvasPuedenSacar();
 	}
 
-	/** Solo mira el item en las manos; sirve igual en cliente y en servidor. */
+	private boolean automatizacionActiva() {
+		return this.puedeMeter() || this.puedeSacar();
+	}
+
+	@Override
+	public int[] getSlotsForFace(final Direction cara) {
+		return this.automatizacionActiva() ? TODOS_LOS_HUECOS : SIN_HUECOS;
+	}
+
+	@Override
+	public boolean canPlaceItemThroughFace(final int hueco, final ItemStack pila, final @Nullable Direction cara) {
+		return this.puedeMeter();
+	}
+
+	@Override
+	public boolean canTakeItemThroughFace(final int hueco, final ItemStack pila, final Direction cara) {
+		return this.puedeSacar();
+	}
+
+	@Override
+	public int getContainerSize() {
+		return TAMANO;
+	}
+
+	@Override
+	public boolean isEmpty() {
+		return !this.automatizacionActiva() || this.inventario.isEmpty();
+	}
+
+	/**
+	 * Se lee con que la automatizacion este activa en cualquiera de los dos
+	 * sentidos, no solo con "sacar": una tolva que empuja necesita ver lo que ya
+	 * hay en el hueco para saber si puede apilar encima. Si le mintieramos
+	 * diciendo que esta vacio, sobreescribiria items.
+	 */
+	@Override
+	public ItemStack getItem(final int hueco) {
+		return this.automatizacionActiva() ? this.inventario.getItem(hueco) : ItemStack.EMPTY;
+	}
+
+	@Override
+	public ItemStack removeItem(final int hueco, final int cantidad) {
+		return this.puedeSacar() ? this.inventario.removeItem(hueco, cantidad) : ItemStack.EMPTY;
+	}
+
+	@Override
+	public ItemStack removeItemNoUpdate(final int hueco) {
+		return this.puedeSacar() ? this.inventario.removeItemNoUpdate(hueco) : ItemStack.EMPTY;
+	}
+
+	@Override
+	public void setItem(final int hueco, final ItemStack pila) {
+		if (this.puedeMeter()) {
+			this.inventario.setItem(hueco, pila);
+		}
+	}
+
+	@Override
+	public boolean canPlaceItem(final int hueco, final ItemStack pila) {
+		return this.puedeMeter();
+	}
+
+	@Override
+	public boolean stillValid(final Player player) {
+		return this.automatizacionActiva() && this.inventario.stillValid(player);
+	}
+
+	/** Nunca desde una tolva: el vaciado del bloque al romperse va por otro sitio. */
+	@Override
+	public void clearContent() {
+	}
+
+	/** Atajo para el codigo de cliente, que no tiene la Proteccion a mano. */
 	public static boolean sostieneLlaveMaestra(final Player player) {
-		return player.getMainHandItem().is(CofresPersonales.LLAVE_MAESTRA)
-				|| player.getOffhandItem().is(CofresPersonales.LLAVE_MAESTRA);
+		return Proteccion.sostieneLlaveMaestra(player);
 	}
 
-	/**
-	 * Acceso sin contrasena: el dueno, o un admin con la Llave Maestra.
-	 *
-	 * El nivel de op solo se puede comprobar en el servidor. En el cliente somos
-	 * optimistas para que la interfaz responda bien; el servidor tiene siempre la
-	 * ultima palabra.
-	 */
-	public boolean puedeAcceder(final Player player) {
-		if (this.esPropietario(player)) {
-			return true;
-		}
-		if (!sostieneLlaveMaestra(player)) {
-			return false;
-		}
-		return !(player instanceof ServerPlayer serverPlayer)
-				|| serverPlayer.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER);
-	}
-
-	public void avisarPropiedad(final Player player) {
-		this.avisar(player, Component.translatable("message.chest_shield.protegido", this.getNombrePropietario())
-				.withStyle(ChatFormatting.RED));
-	}
-
-	public void avisar(final Player player, final Component mensaje) {
-		if (player instanceof ServerPlayer serverPlayer) {
-			serverPlayer.sendOverlayMessage(mensaje);
-		}
-	}
-
-	// ---------- Contrasena ----------
-
-	public boolean tieneClave() {
-		return this.tieneClave;
-	}
-
-	/**
-	 * Decide si estos dos cofres pueden formar un cofre doble.
-	 *
-	 * OJO CON EL ORDEN: al colocar un bloque, los vecinos reciben la
-	 * actualizacion ANTES de que setPlacedBy le asigne dueno y clave al recien
-	 * puesto. Por eso un cofre sin estrenar (dueno nulo, sin clave) cuenta como
-	 * compatible: su dueno y su clave se deciden un instante despues. La
-	 * seguridad no se pierde porque getStateForPlacement ya comprobo que quien lo
-	 * coloco era el dueno del vecino; un cofre ajeno nunca llega a marcarse como
-	 * mitad, y sin eso el vecino jamas intenta unirse.
-	 */
-	public boolean puedeEmparejarseCon(final CofrePersonalBlockEntity otro) {
-		if (this.propietario != null && otro.propietario != null
-				&& !this.propietario.equals(otro.propietario)) {
-			return false;
-		}
-		// Claves: o alguna esta vacia (esa heredara la de la otra), o son identicas.
-		if (!this.tieneClave || !otro.tieneClave) {
-			return true;
-		}
-		return this.hashClave.equals(otro.hashClave) && this.saltClave.equals(otro.saltClave);
-	}
-
-	/**
-	 * Copia tal cual la clave de la otra mitad, incluido el caso de "sin clave".
-	 *
-	 * Un cofre doble es un solo mueble para el jugador, asi que las dos mitades
-	 * deben compartir siempre la misma clave. Se copian hash y salt en vez de
-	 * volver a calcularlos, para que ambas queden identicas y sigan contando como
-	 * compatibles.
-	 */
-	public void copiarClaveDe(final CofrePersonalBlockEntity otra) {
-		this.tieneClave = otra.tieneClave;
-		this.hashClave = otra.hashClave;
-		this.saltClave = otra.saltClave;
-		this.esperaHasta.clear();
-		this.setChanged();
-		this.sincronizarConClientes();
-	}
-
-	/** Cadena vacia = quitar la contrasena. Solo debe llamarse en el servidor. */
-	public void establecerClave(final String clave) {
-		if (clave.isBlank()) {
-			this.tieneClave = false;
-			this.hashClave = "";
-			this.saltClave = "";
-		} else {
-			this.saltClave = HashClave.nuevoSalt();
-			this.hashClave = HashClave.calcular(clave, this.saltClave);
-			this.tieneClave = true;
-		}
-		this.esperaHasta.clear();
-		this.setChanged();
-		this.sincronizarConClientes();
-	}
-
-	public boolean verificarClave(final String clave) {
-		return HashClave.coincide(clave, this.saltClave, this.hashClave);
-	}
+	// El tiempo de juego solo lo conoce el BlockEntity, por eso estos dos no son
+	// defaults de la interfaz.
 
 	public boolean enEspera(final Player player) {
-		if (this.level == null) {
-			return false;
-		}
-		Long hasta = this.esperaHasta.get(player.getUUID());
-		return hasta != null && this.level.getGameTime() < hasta;
+		return this.level != null && this.proteccion.enEspera(player, this.level.getGameTime());
 	}
 
 	public void registrarFallo(final Player player) {
 		if (this.level != null) {
-			this.esperaHasta.put(player.getUUID(), this.level.getGameTime() + ENFRIAMIENTO_TICKS);
+			this.proteccion.registrarFallo(player, this.level.getGameTime());
 		}
+	}
+
+	public boolean puedeEmparejarseCon(final CofrePersonalBlockEntity otro) {
+		return this.proteccion.esCompatibleCon(otro.proteccion);
+	}
+
+	public void copiarAjustesDe(final CofrePersonalBlockEntity otra) {
+		this.proteccion.copiarAjustesDe(otra.proteccion);
 	}
 
 	/**
@@ -318,11 +313,11 @@ public class CofrePersonalBlockEntity extends BlockEntity implements MenuProvide
 	 * exactamente esta apertura: la proxima vez tendra que teclearla de nuevo.
 	 */
 	public void abrirParaInvitado(final ServerPlayer player) {
-		this.invitadoTemporal = player.getUUID();
+		this.proteccion.setInvitadoTemporal(player.getUUID());
 		try {
 			AperturaCofre.abrir(player, this.level, this.worldPosition, this.getBlockState(), true);
 		} finally {
-			this.invitadoTemporal = null;
+			this.proteccion.setInvitadoTemporal(null);
 		}
 	}
 
@@ -338,15 +333,7 @@ public class CofrePersonalBlockEntity extends BlockEntity implements MenuProvide
 	protected void saveAdditional(final ValueOutput output) {
 		super.saveAdditional(output);
 		ContainerHelper.saveAllItems(output, this.inventario.getItems());
-		if (this.propietario != null) {
-			output.store("Propietario", UUIDUtil.CODEC, this.propietario);
-			output.putString("NombrePropietario", this.nombrePropietario);
-		}
-		output.putBoolean("TieneClave", this.tieneClave);
-		if (this.tieneClave) {
-			output.putString("HashClave", this.hashClave);
-			output.putString("SaltClave", this.saltClave);
-		}
+		this.proteccion.guardar(output);
 	}
 
 	@Override
@@ -354,17 +341,10 @@ public class CofrePersonalBlockEntity extends BlockEntity implements MenuProvide
 		super.loadAdditional(input);
 		this.inventario.getItems().replaceAll(stack -> ItemStack.EMPTY);
 		ContainerHelper.loadAllItems(input, this.inventario.getItems());
-		this.propietario = input.read("Propietario", UUIDUtil.CODEC).orElse(null);
-		this.nombrePropietario = input.getStringOr("NombrePropietario", "");
-		this.tieneClave = input.getBooleanOr("TieneClave", false);
-		this.hashClave = input.getStringOr("HashClave", "");
-		this.saltClave = input.getStringOr("SaltClave", "");
+		this.proteccion.cargar(input);
 	}
 
 	// ---------- Sincronizacion con el cliente ----------
-	// Solo viajan el duenno y si el cofre tiene clave o no. El inventario, el
-	// hash y el salt JAMAS se envian: el cliente no debe poder leer ni el
-	// contenido de un cofre ajeno ni nada que sirva para romper la clave.
 
 	@Override
 	public @Nullable Packet<ClientGamePacketListener> getUpdatePacket() {
@@ -374,25 +354,27 @@ public class CofrePersonalBlockEntity extends BlockEntity implements MenuProvide
 	@Override
 	public CompoundTag getUpdateTag(final HolderLookup.Provider registries) {
 		CompoundTag tag = new CompoundTag();
-		if (this.propietario != null) {
-			tag.store("Propietario", UUIDUtil.CODEC, this.propietario);
-			tag.putString("NombrePropietario", this.nombrePropietario);
-		}
-		tag.putBoolean("TieneClave", this.tieneClave);
+		this.proteccion.escribirUpdateTag(tag);
 		return tag;
 	}
 
 	// ---------- Menu ----------
 
+	/**
+	 * El titulo del contenedor dice de quien es el cofre. Se calcula en el
+	 * servidor, que es quien conoce al dueno, y llega al cliente dentro del
+	 * paquete de apertura del menu.
+	 */
 	@Override
 	public Component getDisplayName() {
-		return Component.translatable("block.chest_shield.shielded_chest");
+		return this.proteccion.getPropietario() == null
+				? Component.translatable("block.chest_shield.shielded_chest")
+				: Component.translatable("container.chest_shield.cofre_de", this.proteccion.getNombreMostrado());
 	}
 
 	@Override
 	public @Nullable AbstractContainerMenu createMenu(final int containerId, final Inventory inventory, final Player player) {
-		boolean invitado = player.getUUID().equals(this.invitadoTemporal);
-		if (!invitado && !this.puedeAcceder(player)) {
+		if (!this.proteccion.esInvitado(player) && !this.puedeAbrir(player)) {
 			return null;
 		}
 		return ChestMenu.threeRows(containerId, inventory, this.inventario);

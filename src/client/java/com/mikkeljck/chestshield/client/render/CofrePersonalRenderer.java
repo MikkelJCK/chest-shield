@@ -14,6 +14,7 @@ import net.minecraft.client.model.object.chest.ChestModel;
 import net.minecraft.client.renderer.Sheets;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.BrightnessCombiner;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
@@ -85,6 +86,30 @@ public class CofrePersonalRenderer implements BlockEntityRenderer<CofrePersonalB
 				? estadoBloque.getValue(CofrePersonalBlock.TYPE)
 				: ChestType.SINGLE;
 		estado.apertura = aperturaCombinada(cofre, estadoBloque, parcial);
+		estado.lightCoords = luzCombinada(cofre, estadoBloque, estado.lightCoords);
+	}
+
+	/**
+	 * Las dos mitades de un cofre doble tienen que iluminarse igual.
+	 *
+	 * Cada mitad es un BlockEntity distinto y el juego le calcula la luz en SU
+	 * bloque, asi que con una antorcha a un lado una mitad salia clara y la otra
+	 * oscura, con una costura muy visible en el medio. Vanilla resuelve esto
+	 * tomando la luz mayor de las dos posiciones; aqui se hace lo mismo.
+	 */
+	private static int luzCombinada(final CofrePersonalBlockEntity cofre, final BlockState estado,
+			final int propia) {
+		Level level = cofre.getLevel();
+		if (level == null || !(estado.getBlock() instanceof CofrePersonalBlock bloque)) {
+			return propia;
+		}
+		// BrightnessCombiner es la misma pieza que usa el cofre de vanilla: en un
+		// cofre doble devuelve la luz mayor de las dos mitades, y en uno simple
+		// deja pasar la que ya venia. Se apoya en el mismo combinador de mitades
+		// que ya usamos para la tapa y el sonido.
+		return bloque.combinar(estado, level, cofre.getBlockPos(), true)
+				.apply(new BrightnessCombiner<CofrePersonalBlockEntity>())
+				.applyAsInt(propia);
 	}
 
 	/**
