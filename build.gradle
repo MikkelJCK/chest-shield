@@ -138,6 +138,18 @@ tasks.register('verificarTexturas') {
 
 // Tarea de apoyo: copia el jar de owo-lib (y sus fuentes) dentro del proyecto,
 // para poder inspeccionar su API sin depender del cache global de Gradle.
+// Uso: panel Gradle > chest_shield > Tasks > other > exportarFabricApi
+// fabric-api es un paquete paraguas: el codigo vive en modulos sueltos
+// (fabric-screen-api-v1, fabric-networking-api-v1...). Por eso se copian los
+// jars del classpath en vez de pedir un unico jar de fuentes.
+tasks.register('exportarFabricApi', Copy) {
+	group = 'help'
+	description = 'Copia los modulos de fabric-api a libs-inspeccion/ para consultar su API'
+
+	from({ configurations.compileClasspath.filter { it.name.toLowerCase().contains('fabric') } })
+	into(layout.projectDirectory.dir('libs-inspeccion/fabric'))
+}
+
 // Uso: panel Gradle > chest_shield > Tasks > other > exportarOwo
 tasks.register('exportarOwo', Copy) {
 	group = 'help'
