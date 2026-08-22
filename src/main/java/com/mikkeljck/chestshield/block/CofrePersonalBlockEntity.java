@@ -23,6 +23,7 @@ import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.WorldlyContainer;
 import net.minecraft.world.entity.ContainerUser;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -44,18 +45,33 @@ import org.jspecify.annotations.Nullable;
 /**
  * Entidad del Cofre Personal.
  *
- * IMPORTANTE: esta clase NO implementa Container a proposito. Las tolvas y las
- * tuberias de otros mods buscan un Container en el BlockEntity; al no exponerlo,
- * el cofre queda sellado para cualquier automatizacion. El inventario real vive
- * en un SimpleContainer interno que solo se entrega al menu del jugador.
+ * El inventario real vive en un SimpleContainer interno, que es el unico que se
+ * entrega al menu del jugador. El BlockEntity implementa WorldlyContainer por
+ * separado y con puerta: mientras el dueno no active las tolvas, no expone
+ * ningun hueco y no devuelve ningun item, asi que las tolvas y las tuberias de
+ * otros mods lo ven como una caja vacia e intocable. Al activarlas, la Fabric
+ * Transfer API envuelve este Container sola y funciona con Create, AE2 y
+ * companiaa sin escribir codigo para cada mod.
  *
  * Toda la logica de permisos vive en {@link Proteccion}; aqui solo queda lo que
  * es propio de un cofre: el inventario, la tapa animada y el sonido.
  */
-public class CofrePersonalBlockEntity extends BlockEntity implements MenuProvider, LidBlockEntity, ContenedorBlindado {
+public class CofrePersonalBlockEntity extends BlockEntity
+		implements MenuProvider, LidBlockEntity, ContenedorBlindado, WorldlyContainer {
 
 	public static final int TAMANO = 27;
 	public static final int LONGITUD_MAXIMA_CLAVE = Proteccion.LONGITUD_MAXIMA_CLAVE;
+
+	private static final int[] SIN_HUECOS = new int[0];
+	private static final int[] TODOS_LOS_HUECOS = crearHuecos();
+
+	private static int[] crearHuecos() {
+		int[] huecos = new int[TAMANO];
+		for (int i = 0; i < TAMANO; i++) {
+			huecos[i] = i;
+		}
+		return huecos;
+	}
 
 	private final Proteccion proteccion = new Proteccion(this::alCambiarProteccion);
 
@@ -179,6 +195,93 @@ public class CofrePersonalBlockEntity extends BlockEntity implements MenuProvide
 		}
 	}
 
+	// ---------- Tolvas y automatizacion ----------
+	// Solo esta seccion implementa WorldlyContainer. Con las dos casillas
+	// apagadas el cofre miente a conciencia: dice tener 27 huecos pero todos
+	// vacios, y rechaza cualquier intento de meter o sacar. Asi ningun mod puede
+	// tocarlo, ni siquiera los que ignoran getSlotsForFace y van directos al
+	// Container. El menu del jugador no pasa por aqui: usa el SimpleContainer.
+
+	private boolean puedeMeter() {
+		return this.proteccion.getAjustes().tolvasPuedenMeter();
+	}
+
+	private boolean puedeSacar() {
+		return this.proteccion.getAjustes().tolvasPuedenSacar();
+	}
+
+	private boolean automatizacionActiva() {
+		return this.puedeMeter() || this.puedeSacar();
+	}
+
+	@Override
+	public int[] getSlotsForFace(final Direction cara) {
+		return this.automatizacionActiva() ? TODOS_LOS_HUECOS : SIN_HUECOS;
+	}
+
+	@Override
+	public boolean canPlaceItemThroughFace(final int hueco, final ItemStack pila, final @Nullable Direction cara) {
+		return this.puedeMeter();
+	}
+
+	@Override
+	public boolean canTakeItemThroughFace(final int hueco, final ItemStack pila, final Direction cara) {
+		return this.puedeSacar();
+	}
+
+	@Override
+	public int getContainerSize() {
+		return TAMANO;
+	}
+
+	@Override
+	public boolean isEmpty() {
+		return !this.automatizacionActiva() || this.inventario.isEmpty();
+	}
+
+	/**
+	 * Se lee con que la automatizacion este activa en cualquiera de los dos
+	 * sentidos, no solo con "sacar": una tolva que empuja necesita ver lo que ya
+	 * hay en el hueco para saber si puede apilar encima. Si le mintieramos
+	 * diciendo que esta vacio, sobreescribiria items.
+	 */
+	@Override
+	public ItemStack getItem(final int hueco) {
+		return this.automatizacionActiva() ? this.inventario.getItem(hueco) : ItemStack.EMPTY;
+	}
+
+	@Override
+	public ItemStack removeItem(final int hueco, final int cantidad) {
+		return this.puedeSacar() ? this.inventario.removeItem(hueco, cantidad) : ItemStack.EMPTY;
+	}
+
+	@Override
+	public ItemStack removeItemNoUpdate(final int hueco) {
+		return this.puedeSacar() ? this.inventario.removeItemNoUpdate(hueco) : ItemStack.EMPTY;
+	}
+
+	@Override
+	public void setItem(final int hueco, final ItemStack pila) {
+		if (this.puedeMeter()) {
+			this.inventario.setItem(hueco, pila);
+		}
+	}
+
+	@Override
+	public boolean canPlaceItem(final int hueco, final ItemStack pila) {
+		return this.puedeMeter();
+	}
+
+	@Override
+	public boolean stillValid(final Player player) {
+		return this.automatizacionActiva() && this.inventario.stillValid(player);
+	}
+
+	/** Nunca desde una tolva: el vaciado del bloque al romperse va por otro sitio. */
+	@Override
+	public void clearContent() {
+	}
+
 	/** Atajo para el codigo de cliente, que no tiene la Proteccion a mano. */
 	public static boolean sostieneLlaveMaestra(final Player player) {
 		return Proteccion.sostieneLlaveMaestra(player);
@@ -271,7 +374,7 @@ public class CofrePersonalBlockEntity extends BlockEntity implements MenuProvide
 
 	@Override
 	public @Nullable AbstractContainerMenu createMenu(final int containerId, final Inventory inventory, final Player player) {
-		if (!this.proteccion.esInvitado(player) && !this.puedeAcceder(player)) {
+		if (!this.proteccion.esInvitado(player) && !this.puedeAbrir(player)) {
 			return null;
 		}
 		return ChestMenu.threeRows(containerId, inventory, this.inventario);

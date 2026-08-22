@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import com.mikkeljck.chestshield.CofresPersonales;
+import com.mojang.serialization.Codec;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.UUIDUtil;
@@ -25,6 +26,12 @@ import org.jspecify.annotations.Nullable;
  * Vive fuera del BlockEntity a proposito. Cualquier bloque que quiera estar
  * blindado (el cofre hoy, el barril manana) compone una instancia de esta clase
  * e implementa {@link ContenedorBlindado}, en vez de copiar la logica entera.
+ *
+ * TODO ES LOCAL: cada cofre (o cofre doble) es dueno de su clave, su lista de
+ * permisos y sus tolvas. No hay ningun perfil compartido entre cofres, y esa es
+ * una decision de diseno, no una limitacion: sin estado global, lo que el
+ * cliente tiene de un cofre nunca puede quedarse desfasado por un cambio hecho
+ * en otro.
  *
  * IMPORTANTE: las claves del NBT no se pueden renombrar. El mod ya esta
  * publicado y hay mundos con cofres colocados; si cambian, esos jugadores
@@ -66,12 +73,11 @@ public class Proteccion {
 		this.alCambiar = alCambiar;
 	}
 
-	/** Los ajustes que rigen este contenedor. De momento siempre los suyos propios. */
 	public Ajustes getAjustes() {
 		return this.ajustes;
 	}
 
-	/** Para uso desde fuera tras modificar los ajustes directamente. */
+	/** Para quien toca los ajustes directamente y necesita que se guarden. */
 	public void marcarCambiado() {
 		this.alCambiar.run();
 	}
@@ -104,25 +110,89 @@ public class Proteccion {
 	}
 
 	/**
-	 * Acceso sin contrasena: el dueno, quien esta en la lista de permisos, o un
-	 * admin con la Llave Maestra.
+	 * Quien puede ABRIR el cofre sin escribir contrasena.
 	 *
+	 * Con la proteccion apagada, cualquiera. Si no: el dueno, quien tenga
+	 * permiso, y un admin con la Llave Maestra.
+	 */
+	public boolean puedeAbrir(final Player player) {
+		if (!this.ajustes.estaProtegido()) {
+			return true;
+		}
+		if (this.esPropietario(player)) {
+			return true;
+		}
+		if (this.ajustes.tienePermiso(player.getUUID())
+				|| this.ajustes.tienePendiente(player.getName().getString())) {
+			return true;
+		}
+		return this.esAdminConLlave(player);
+	}
+
+	/**
+	 * Quien puede ROMPER el cofre y cambiar su configuracion.
+	 *
+	 * Solo el dueno y un admin con la Llave Maestra, aunque la proteccion este
+	 * apagada. Apagarla abre el contenido, no regala el bloque: si no, compartir
+	 * un cofre con el clan acabaria con alguien picandolo y llevandoselo entero.
+	 * Los permisos tampoco dan derecho a romperlo: mandan sobre el contenido, no
+	 * sobre el mueble.
+	 */
+	public boolean puedeGestionar(final Player player) {
+		return this.esPropietario(player) || this.esAdminConLlave(player);
+	}
+
+	/**
 	 * El nivel de op solo se puede comprobar en el servidor. En el cliente somos
 	 * optimistas para que la interfaz responda bien; el servidor tiene siempre la
 	 * ultima palabra.
 	 */
-	public boolean puedeAcceder(final Player player) {
-		if (this.esPropietario(player)) {
-			return true;
-		}
-		if (this.ajustes.tienePermiso(player.getUUID())) {
-			return true;
-		}
+	private boolean esAdminConLlave(final Player player) {
 		if (!sostieneLlaveMaestra(player)) {
 			return false;
 		}
 		return !(player instanceof ServerPlayer serverPlayer)
 				|| serverPlayer.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER);
+	}
+
+	/**
+	 * Convierte en permiso normal el pendiente de quien acaba de entrar.
+	 *
+	 * Se llama al abrir, que es la primera vez que tenemos delante a la persona y
+	 * por tanto su UUID. Solo tiene sentido en el servidor.
+	 */
+	public void resolverPendiente(final Player player) {
+		String nombre = player.getName().getString();
+		if (this.ajustes.quitarPendiente(nombre)) {
+			this.ajustes.agregarPermiso(player.getUUID(), nombre);
+			this.marcarCambiado();
+		}
+	}
+
+	public boolean estaProtegido() {
+		return this.ajustes.estaProtegido();
+	}
+
+	public void setProtegido(final boolean protegido) {
+		this.ajustes.setProtegido(protegido);
+		this.marcarCambiado();
+	}
+
+	public void agregarPendiente(final String nombre) {
+		this.ajustes.agregarPendiente(nombre);
+		this.marcarCambiado();
+	}
+
+	public boolean quitarPendiente(final String nombre) {
+		boolean quitado = this.ajustes.quitarPendiente(nombre);
+		if (quitado) {
+			this.marcarCambiado();
+		}
+		return quitado;
+	}
+
+	public List<String> getPendientes() {
+		return this.ajustes.getPendientes();
 	}
 
 	public void avisarPropiedad(final Player player) {
@@ -253,18 +323,19 @@ public class Proteccion {
 	 * son acumulativos y sin "else": un cofre de la version 0 tiene que poder
 	 * atravesar todos los pasos hasta la actual de una sola vez.
 	 *
-	 * De 0 a 1 no hay nada que transformar a proposito: la version 1.1 conserva
-	 * tal cual las claves NBT de la 1.0.0 y solo anade campos nuevos, que al
-	 * faltar toman sus valores por defecto. Un cofre viejo sigue teniendo su
-	 * dueno y su contrasena sin tocar nada, y su lista de permisos nace vacia.
+	 * De 0 a 1 no hay nada que transformar, y es a proposito: la 1.1 conserva tal
+	 * cual las claves NBT de la 1.0.0 y solo anade campos nuevos, que al faltar
+	 * toman su valor por defecto. Un cofre viejo mantiene dueno y contrasena sin
+	 * tocar un byte, y su lista de permisos nace vacia. Una migracion que no hace
+	 * nada es la unica que no puede fallar; el andamiaje esta aqui para cuando si
+	 * haga falta.
 	 */
 	private void migrar(final int versionGuardada) {
 		if (versionGuardada >= VERSION_DATOS) {
 			return;
 		}
 		if (versionGuardada < 1) {
-			// 1.0.0 -> 1.1.0: sin transformaciones. Ver el comentario de arriba.
-			CofresPersonales.LOGGER.debug("Migrando cofre de la version {} a la {}",
+			CofresPersonales.LOGGER.debug("Cofre de la version {} leido como {}",
 					versionGuardada, VERSION_DATOS);
 		}
 	}
@@ -275,18 +346,22 @@ public class Proteccion {
 	 *
 	 * El inventario, el hash y el salt JAMAS se envian: el cliente no debe poder
 	 * leer ni el contenido de un cofre ajeno ni nada que sirva para romper la
-	 * clave. La lista de permisos si va, porque el cliente la necesita para dos
-	 * cosas: saber si debe pedir la contrasena al abrir, y pintarla en la
-	 * pantalla de configuracion. No contiene ningun secreto, pero si es
-	 * informacion publica: cualquiera cerca del cofre puede ver quien tiene
-	 * acceso.
+	 * clave. La lista de permisos si va, porque la pantalla de configuracion
+	 * tiene que pintarla. No contiene ningun secreto, pero si es informacion
+	 * publica: cualquiera cerca del cofre puede ver quien tiene acceso.
 	 */
 	public void escribirUpdateTag(final CompoundTag tag) {
+		tag.putInt("Version", VERSION_DATOS);
 		if (this.propietario != null) {
 			tag.store("Propietario", UUIDUtil.CODEC, this.propietario);
 			tag.putString("NombrePropietario", this.nombrePropietario);
 		}
+		tag.putBoolean("Protegido", this.ajustes.estaProtegido());
 		tag.putBoolean("TieneClave", this.ajustes.tieneClave());
+		List<String> pendientes = this.ajustes.getPendientes();
+		if (!pendientes.isEmpty()) {
+			tag.store("PermisosPendientes", Codec.STRING.listOf(), pendientes);
+		}
 		List<Ajustes.Permiso> permisos = this.ajustes.getPermisos();
 		if (!permisos.isEmpty()) {
 			tag.store("Permisos", Ajustes.Permiso.LISTA, permisos);

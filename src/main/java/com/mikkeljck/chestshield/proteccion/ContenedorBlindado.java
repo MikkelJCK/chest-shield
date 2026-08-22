@@ -29,8 +29,16 @@ public interface ContenedorBlindado {
 		return this.getProteccion().esPropietario(player);
 	}
 
-	default boolean puedeAcceder(final Player player) {
-		return this.getProteccion().puedeAcceder(player);
+	default boolean puedeAbrir(final Player player) {
+		return this.getProteccion().puedeAbrir(player);
+	}
+
+	default boolean puedeGestionar(final Player player) {
+		return this.getProteccion().puedeGestionar(player);
+	}
+
+	default boolean estaProtegido() {
+		return this.getProteccion().estaProtegido();
 	}
 
 	default boolean tieneClave() {

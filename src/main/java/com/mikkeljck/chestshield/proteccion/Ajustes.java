@@ -2,8 +2,11 @@ package com.mikkeljck.chestshield.proteccion;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import com.mikkeljck.chestshield.util.HashClave;
@@ -39,12 +42,34 @@ public class Ajustes {
 	}
 
 	/**
-	 * "Activada" y "hay una clave guardada" son cosas distintas: apagar la clave
-	 * no la borra, para poder volver a encenderla sin escribirla otra vez.
+	 * El interruptor principal. Apagado, el cofre se abre como uno de vanilla:
+	 * ni clave ni permisos tienen efecto. Encendido por defecto, porque proteger
+	 * es la razon de ser del bloque.
+	 *
+	 * Apagarlo NO lo vuelve destruible: la resistencia a explosiones y a pistones
+	 * esta en las propiedades del bloque, no aqui, y romperlo sigue siendo cosa
+	 * exclusiva del dueno.
 	 */
-	private boolean claveActiva;
+	private boolean protegido = true;
+
+	/**
+	 * "Hay una clave guardada". Es lo unico que viaja al cliente sobre la clave;
+	 * el hash y el salt no salen del servidor.
+	 */
+	private boolean hayClave;
 	private String hashClave = "";
 	private String saltClave = "";
+
+	/**
+	 * Permisos dados a alguien que no estaba conectado, guardados por nombre en
+	 * minusculas.
+	 *
+	 * Existen porque un permiso normal se guarda por UUID (para que sobreviva a
+	 * un cambio de nick) y el UUID de un jugador desconectado no se puede
+	 * averiguar sin preguntarle a Mojang. La primera vez que esa persona abre el
+	 * cofre, el pendiente se convierte solo en un permiso por UUID.
+	 */
+	private final Set<String> pendientes = new LinkedHashSet<>();
 
 	/** Orden de insercion, para que la lista no baile cada vez que se abre la pantalla. */
 	private final Map<UUID, String> permisos = new LinkedHashMap<>();
@@ -54,34 +79,32 @@ public class Ajustes {
 
 	// ---------- Clave ----------
 
+	public boolean estaProtegido() {
+		return this.protegido;
+	}
+
+	public void setProtegido(final boolean protegido) {
+		this.protegido = protegido;
+	}
+
 	/**
-	 * OJO: esto tiene que poder responder bien EN EL CLIENTE, donde el hash nunca
-	 * llega. Por eso mira solo el booleano, y el invariante "activa implica que
-	 * hay hash" se mantiene en setClaveActiva y establecerClave.
+	 * OJO: tiene que responder bien EN EL CLIENTE, donde el hash nunca llega. Por
+	 * eso mira el booleano y no el hash.
 	 */
 	public boolean tieneClave() {
-		return this.claveActiva;
-	}
-
-	public boolean hayClaveGuardada() {
-		return !this.hashClave.isEmpty();
-	}
-
-	/** No se puede activar una clave que no existe. */
-	public void setClaveActiva(final boolean activa) {
-		this.claveActiva = activa && !this.hashClave.isEmpty();
+		return this.hayClave;
 	}
 
 	/** Cadena vacia = borrar la clave del todo. Solo debe llamarse en el servidor. */
 	public void establecerClave(final String clave) {
 		if (clave.isBlank()) {
-			this.claveActiva = false;
+			this.hayClave = false;
 			this.hashClave = "";
 			this.saltClave = "";
 		} else {
 			this.saltClave = HashClave.nuevoSalt();
 			this.hashClave = HashClave.calcular(clave, this.saltClave);
-			this.claveActiva = true;
+			this.hayClave = true;
 		}
 	}
 
@@ -101,6 +124,22 @@ public class Ajustes {
 
 	public boolean tienePermiso(final UUID jugador) {
 		return this.permisos.containsKey(jugador);
+	}
+
+	public boolean tienePendiente(final String nombre) {
+		return this.pendientes.contains(nombre.toLowerCase(Locale.ROOT));
+	}
+
+	public void agregarPendiente(final String nombre) {
+		this.pendientes.add(nombre.toLowerCase(Locale.ROOT));
+	}
+
+	public boolean quitarPendiente(final String nombre) {
+		return this.pendientes.remove(nombre.toLowerCase(Locale.ROOT));
+	}
+
+	public List<String> getPendientes() {
+		return List.copyOf(this.pendientes);
 	}
 
 	public void agregarPermiso(final UUID jugador, final String nombre) {
@@ -140,11 +179,17 @@ public class Ajustes {
 
 	/** Se usa al emparejar dos cofres: las dos mitades son un solo mueble. */
 	public void copiarDe(final Ajustes otros) {
-		this.claveActiva = otros.claveActiva;
+		if (otros == this) {
+			return;
+		}
+		this.protegido = otros.protegido;
+		this.hayClave = otros.hayClave;
 		this.hashClave = otros.hashClave;
 		this.saltClave = otros.saltClave;
 		this.permisos.clear();
 		this.permisos.putAll(otros.permisos);
+		this.pendientes.clear();
+		this.pendientes.addAll(otros.pendientes);
 		this.tolvasMeter = otros.tolvasMeter;
 		this.tolvasSacar = otros.tolvasSacar;
 	}
@@ -155,7 +200,8 @@ public class Ajustes {
 	// y si cambian, esos jugadores pierden sus contrasenas al actualizar.
 
 	public void guardar(final ValueOutput output) {
-		output.putBoolean("TieneClave", this.claveActiva);
+		output.putBoolean("Protegido", this.protegido);
+		output.putBoolean("TieneClave", this.hayClave);
 		if (!this.hashClave.isEmpty()) {
 			output.putString("HashClave", this.hashClave);
 			output.putString("SaltClave", this.saltClave);
@@ -164,14 +210,22 @@ public class Ajustes {
 		if (!lista.isEmpty()) {
 			output.store("Permisos", Permiso.LISTA, lista);
 		}
+		if (!this.pendientes.isEmpty()) {
+			output.store("PermisosPendientes", Codec.STRING.listOf(), this.getPendientes());
+		}
 		output.putBoolean("TolvasMeter", this.tolvasMeter);
 		output.putBoolean("TolvasSacar", this.tolvasSacar);
 	}
 
 	public void cargar(final ValueInput input) {
-		this.claveActiva = input.getBooleanOr("TieneClave", false);
+		// Por defecto protegido: es lo que eran todos los cofres de la 1.0.0.
+		this.protegido = input.getBooleanOr("Protegido", true);
+		this.hayClave = input.getBooleanOr("TieneClave", false);
 		this.hashClave = input.getStringOr("HashClave", "");
 		this.saltClave = input.getStringOr("SaltClave", "");
+		this.pendientes.clear();
+		input.read("PermisosPendientes", Codec.STRING.listOf())
+				.ifPresent(lista -> lista.forEach(nombre -> this.pendientes.add(nombre.toLowerCase(Locale.ROOT))));
 		this.permisos.clear();
 		input.read("Permisos", Permiso.LISTA).ifPresent(lista -> {
 			for (Permiso permiso : lista) {

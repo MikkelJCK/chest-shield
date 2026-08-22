@@ -85,7 +85,7 @@ public class CofresPersonales implements ModInitializer {
 
 		// Bloqueo de rotura: cubre tambien modo creativo, donde getDestroyProgress no aplica
 		PlayerBlockBreakEvents.BEFORE.register((level, player, pos, state, blockEntity) -> {
-			if (blockEntity instanceof CofrePersonalBlockEntity cofre && !cofre.puedeAcceder(player)) {
+			if (blockEntity instanceof CofrePersonalBlockEntity cofre && !cofre.puedeGestionar(player)) {
 				cofre.avisarPropiedad(player);
 				return false;
 			}

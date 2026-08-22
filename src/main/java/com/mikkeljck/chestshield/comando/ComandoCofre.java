@@ -12,13 +12,9 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
-import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.Permissions;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.ChestType;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import org.jspecify.annotations.Nullable;
@@ -59,7 +55,14 @@ public final class ComandoCofre {
 						.then(Commands.literal("remove")
 								.then(Commands.argument("jugador", EntityArgument.player())
 										.executes(contexto -> quitar(contexto,
-												EntityArgument.getPlayer(contexto, "jugador")))))));
+												EntityArgument.getPlayer(contexto, "jugador"))))))
+				.then(Commands.literal("tolvas")
+						.then(Commands.literal("meter")
+								.then(Commands.literal("on").executes(c -> tolvas(c, true, true)))
+								.then(Commands.literal("off").executes(c -> tolvas(c, true, false))))
+						.then(Commands.literal("sacar")
+								.then(Commands.literal("on").executes(c -> tolvas(c, false, true)))
+								.then(Commands.literal("off").executes(c -> tolvas(c, false, false))))));
 	}
 
 	// ---------- Subcomandos ----------
@@ -68,6 +71,7 @@ public final class ComandoCofre {
 		CofrePersonalBlockEntity cofre = cofreMirado(contexto);
 		StringBuilder texto = new StringBuilder();
 		texto.append("Dueno: ").append(cofre.getNombrePropietario());
+		texto.append("\nProtegido: ").append(cofre.estaProtegido() ? "si" : "NO (abierto a todos)");
 		texto.append("\nClave: ").append(cofre.tieneClave() ? "si" : "no");
 		Ajustes ajustes = cofre.getProteccion().getAjustes();
 		texto.append("\nTolvas: meter=").append(ajustes.tolvasPuedenMeter())
@@ -80,6 +84,9 @@ public final class ComandoCofre {
 				texto.append("\n  - ").append(permiso.nombre());
 			}
 		}
+		for (String pendiente : cofre.getProteccion().getPendientes()) {
+			texto.append("\n  - ").append(pendiente).append(" (pendiente)");
+		}
 		responder(contexto, texto.toString(), ChatFormatting.GRAY);
 		return 1;
 	}
@@ -91,7 +98,7 @@ public final class ComandoCofre {
 			responder(contexto, objetivo.getName().getString() + " ya es el dueno", ChatFormatting.YELLOW);
 			return 0;
 		}
-		paraAmbasMitades(contexto, cofre,
+		CofrePersonalBlock.paraAmbasMitades(cofre,
 				mitad -> mitad.agregarPermiso(objetivo.getUUID(), objetivo.getName().getString()));
 		responder(contexto, "Permiso concedido a " + objetivo.getName().getString(), ChatFormatting.GREEN);
 		return 1;
@@ -104,41 +111,35 @@ public final class ComandoCofre {
 			responder(contexto, objetivo.getName().getString() + " no tenia permiso", ChatFormatting.YELLOW);
 			return 0;
 		}
-		paraAmbasMitades(contexto, cofre, mitad -> mitad.quitarPermiso(objetivo.getUUID()));
+		CofrePersonalBlock.paraAmbasMitades(cofre, mitad -> mitad.quitarPermiso(objetivo.getUUID()));
 		responder(contexto, "Permiso retirado a " + objetivo.getName().getString(), ChatFormatting.GREEN);
 		return 1;
 	}
 
-	// ---------- Ayudas ----------
-
-	/**
-	 * Un cofre doble es un solo mueble: lo que se aplica a una mitad se aplica a
-	 * la otra, igual que ya pasa con la contrasena.
-	 */
-	private static void paraAmbasMitades(final CommandContext<CommandSourceStack> contexto,
-			final CofrePersonalBlockEntity cofre, final java.util.function.Consumer<CofrePersonalBlockEntity> accion) {
-		accion.accept(cofre);
-		Level nivel = cofre.getLevel();
-		if (nivel == null) {
-			return;
-		}
-		BlockState estado = cofre.getBlockState();
-		if (!(estado.getBlock() instanceof CofrePersonalBlock)
-				|| estado.getValue(CofrePersonalBlock.TYPE) == ChestType.SINGLE) {
-			return;
-		}
-		BlockPos posPareja = cofre.getBlockPos().relative(CofrePersonalBlock.direccionUnion(estado));
-		if (nivel.getBlockEntity(posPareja) instanceof CofrePersonalBlockEntity pareja) {
-			accion.accept(pareja);
-		}
+	private static int tolvas(final CommandContext<CommandSourceStack> contexto, final boolean meter,
+			final boolean permitido) throws CommandSyntaxException {
+		CofrePersonalBlockEntity cofre = cofreMiradoSiendoDueno(contexto);
+		CofrePersonalBlock.paraAmbasMitades(cofre, mitad -> {
+			if (meter) {
+				mitad.getProteccion().getAjustes().setTolvasMeter(permitido);
+			} else {
+				mitad.getProteccion().getAjustes().setTolvasSacar(permitido);
+			}
+			mitad.getProteccion().marcarCambiado();
+		});
+		responder(contexto, "Las tolvas " + (permitido ? "ya pueden " : "ya no pueden ")
+				+ (meter ? "meter objetos" : "sacar objetos"), ChatFormatting.GREEN);
+		return 1;
 	}
+
+	// ---------- Ayudas ----------
 
 	private static CofrePersonalBlockEntity cofreMiradoSiendoDueno(final CommandContext<CommandSourceStack> contexto)
 			throws CommandSyntaxException {
 		CofrePersonalBlockEntity cofre = cofreMirado(contexto);
 		ServerPlayer jugador = contexto.getSource().getPlayerOrException();
 		boolean admin = contexto.getSource().permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER);
-		if (!cofre.esPropietario(jugador) && !admin) {
+		if (!cofre.puedeGestionar(jugador) && !admin) {
 			throw NO_ERES_EL_DUENO.create();
 		}
 		return cofre;
