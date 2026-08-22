@@ -3,7 +3,7 @@
   "id": "chest_shield",
   "version": "${version}",
   "name": "Chest Shield",
-  "description": "Owner-locked chests with an optional password. Griefing-proof.",
+  "description": "Chests only their owner can open, with permissions, an optional guest password and configurable hopper access.",
   "authors": [
     "mikkeljck"
   ],
