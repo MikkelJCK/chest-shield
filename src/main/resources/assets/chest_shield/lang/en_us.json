@@ -37,5 +37,14 @@
   "screen.chest_shield.no_conectado_titulo": "%s is not online",
   "screen.chest_shield.no_conectado_aviso": "They will get access when they join.",
   "screen.chest_shield.no_conectado_aviso2": "Add them anyway?",
-  "message.chest_shield.permiso_pendiente": "%s will have access when they join"
+  "message.chest_shield.permiso_pendiente": "%s will have access when they join",
+  "command.chest_shield.no_miras_cofre": "You are not looking at a shielded chest",
+  "command.chest_shield.no_es_tuyo": "That chest is not yours",
+  "command.chest_shield.info_dueno": "Owner: %s",
+  "command.chest_shield.info_protegido": "Protected: %s",
+  "command.chest_shield.info_clave": "Guest password: %s",
+  "command.chest_shield.info_tolvas": "Hoppers: put in %s, take out %s",
+  "command.chest_shield.info_permisos": "Permissions (%s):",
+  "command.chest_shield.info_sin_permisos": "Nobody else can open it",
+  "command.chest_shield.info_pendiente": "%s (pending)"
 }

@@ -37,5 +37,14 @@
   "screen.chest_shield.no_conectado_titulo": "%s no está conectado",
   "screen.chest_shield.no_conectado_aviso": "Se le dará acceso cuando entre al servidor.",
   "screen.chest_shield.no_conectado_aviso2": "¿Añadirlo igualmente?",
-  "message.chest_shield.permiso_pendiente": "%s tendrá acceso cuando entre"
+  "message.chest_shield.permiso_pendiente": "%s tendrá acceso cuando entre",
+  "command.chest_shield.no_miras_cofre": "No estás mirando un cofre blindado",
+  "command.chest_shield.no_es_tuyo": "Ese cofre no es tuyo",
+  "command.chest_shield.info_dueno": "Dueño: %s",
+  "command.chest_shield.info_protegido": "Protegido: %s",
+  "command.chest_shield.info_clave": "Clave de invitado: %s",
+  "command.chest_shield.info_tolvas": "Tolvas: meter %s, sacar %s",
+  "command.chest_shield.info_permisos": "Permisos (%s):",
+  "command.chest_shield.info_sin_permisos": "Nadie más puede abrirlo",
+  "command.chest_shield.info_pendiente": "%s (pendiente)"
 }
