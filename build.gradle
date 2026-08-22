@@ -4,10 +4,8 @@ plugins {
 }
 
 repositories {
-	// owo-lib (GUI declarativa)
-	maven { url = 'https://maven.wispforest.io/releases/' }
-	// owo depende de kdl4j, que solo se publica en JitPack
-	maven { url = 'https://jitpack.io' }
+	// El mod no depende de ninguna libreria de terceros: solo Minecraft,
+	// fabric-loader y fabric-api, que Loom ya sabe de donde bajar.
 
 	// Add repositories to retrieve artifacts from in here.
 	// You should only use this when depending on other mods because
@@ -18,7 +16,7 @@ repositories {
 
 // El nombre del jar queda como chest_shield-1.0.0+26.2.jar
 // El sufijo +<mc> es metadato de build de semver, y es la convencion que usan
-// fabric-api y owo-lib: deja claro para que Minecraft sirve cada archivo.
+// fabric-api: deja claro para que Minecraft sirve cada archivo.
 version = "${project.mod_version}+${project.minecraft_version}"
 
 loom {
@@ -45,18 +43,6 @@ dependencies {
 
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-
-	// owo-lib: interfaces graficas.
-	// Loom 1.17 elimino modImplementation; el remapeo de mods ya es automatico.
-	implementation "io.wispforest:owo-lib:${project.owo_version}"
-}
-
-// El "sentinel" de owo se empaqueta dentro del jar para avisar al jugador que le
-// falta owo-lib en vez de que le reviente el juego. Solo si Loom expone 'include'.
-if (configurations.findByName('include') != null) {
-	dependencies.add('include', "io.wispforest:owo-sentinel:${project.owo_version}")
-} else {
-	logger.lifecycle("AVISO: Loom no expone la configuracion 'include'; owo-sentinel no se empaquetara.")
 }
 
 processResources {
@@ -136,8 +122,8 @@ tasks.register('verificarTexturas') {
 	}
 }
 
-// Tarea de apoyo: copia el jar de owo-lib (y sus fuentes) dentro del proyecto,
-// para poder inspeccionar su API sin depender del cache global de Gradle.
+// Tarea de apoyo: copia las librerias del classpath dentro del proyecto, para
+// poder inspeccionar su API sin depender del cache global de Gradle.
 // Uso: panel Gradle > chest_shield > Tasks > other > exportarFabricApi
 // fabric-api es un paquete paraguas: el codigo vive en modulos sueltos
 // (fabric-screen-api-v1, fabric-networking-api-v1...). Por eso se copian los
@@ -150,20 +136,6 @@ tasks.register('exportarFabricApi', Copy) {
 	into(layout.projectDirectory.dir('libs-inspeccion/fabric'))
 }
 
-// Uso: panel Gradle > chest_shield > Tasks > other > exportarOwo
-tasks.register('exportarOwo', Copy) {
-	group = 'help'
-	description = 'Copia owo-lib a libs-inspeccion/ para consultar su API'
-
-	def fuentes = configurations.detachedConfiguration(
-			dependencies.create("io.wispforest:owo-lib:${project.owo_version}:sources")
-	)
-	fuentes.transitive = false
-
-	from(fuentes)
-	from({ configurations.compileClasspath.filter { it.name.toLowerCase().contains('owo') } })
-	into(layout.projectDirectory.dir('libs-inspeccion'))
-}
 
 // configure the maven publication
 publishing {

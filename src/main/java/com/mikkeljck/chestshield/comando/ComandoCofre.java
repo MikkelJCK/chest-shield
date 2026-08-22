@@ -3,6 +3,7 @@ package com.mikkeljck.chestshield.comando;
 import com.mikkeljck.chestshield.block.CofrePersonalBlock;
 import com.mikkeljck.chestshield.block.CofrePersonalBlockEntity;
 import com.mikkeljck.chestshield.proteccion.Ajustes;
+import com.mikkeljck.chestshield.proteccion.Permisos;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
@@ -14,7 +15,7 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.permissions.Permissions;
+import net.minecraft.server.permissions.PermissionLevel;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import org.jspecify.annotations.Nullable;
@@ -138,7 +139,10 @@ public final class ComandoCofre {
 			throws CommandSyntaxException {
 		CofrePersonalBlockEntity cofre = cofreMirado(contexto);
 		ServerPlayer jugador = contexto.getSource().getPlayerOrException();
-		boolean admin = contexto.getSource().permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER);
+		// Mismo permiso que la Llave Maestra: quien puede abrir cofres ajenos
+		// tambien puede administrarlos por comando.
+		boolean admin = contexto.getSource().checkPermission(Permisos.LLAVE_MAESTRA.key(),
+				PermissionLevel.GAMEMASTERS);
 		if (!cofre.puedeGestionar(jugador) && !admin) {
 			throw NO_ERES_EL_DUENO.create();
 		}

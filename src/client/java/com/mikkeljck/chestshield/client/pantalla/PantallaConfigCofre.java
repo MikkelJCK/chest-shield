@@ -10,6 +10,8 @@ import com.mikkeljck.chestshield.proteccion.Ajustes;
 import com.mikkeljck.chestshield.proteccion.Proteccion;
 import com.mikkeljck.chestshield.red.RedCofres;
 
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -119,7 +121,7 @@ public class PantallaConfigCofre extends Screen {
 		// ---- El interruptor principal ----
 		this.addRenderableWidget(new CasillaVanilla(izquierda + MARGEN, y,
 				Component.translatable("screen.chest_shield.protegido"), this.font, protegido,
-				valor -> RedCofres.CANAL.clientHandle().send(new RedCofres.CambiarProtegido(this.pos, valor))));
+				valor -> ClientPlayNetworking.send(new RedCofres.CambiarProtegido(this.pos, valor))));
 		y += 34;
 
 		// ---- Clave de invitado ----
@@ -391,13 +393,13 @@ public class PantallaConfigCofre extends Screen {
 		if (clave.isBlank()) {
 			return;
 		}
-		RedCofres.CANAL.clientHandle().send(new RedCofres.EstablecerClave(this.pos, clave));
+		ClientPlayNetworking.send(new RedCofres.EstablecerClave(this.pos, clave));
 		this.campoClave.setValue("");
 	}
 
 	/** Cadena vacia = el servidor la borra. */
 	private void borrarClave() {
-		RedCofres.CANAL.clientHandle().send(new RedCofres.EstablecerClave(this.pos, ""));
+		ClientPlayNetworking.send(new RedCofres.EstablecerClave(this.pos, ""));
 		this.campoClave.setValue("");
 	}
 
@@ -407,7 +409,7 @@ public class PantallaConfigCofre extends Screen {
 			return;
 		}
 		Ajustes ajustes = cofre.getProteccion().getAjustes();
-		RedCofres.CANAL.clientHandle().send(new RedCofres.CambiarTolvas(this.pos,
+		ClientPlayNetworking.send(new RedCofres.CambiarTolvas(this.pos,
 				meter != null ? meter : ajustes.tolvasPuedenMeter(),
 				sacar != null ? sacar : ajustes.tolvasPuedenSacar()));
 	}
@@ -442,7 +444,7 @@ public class PantallaConfigCofre extends Screen {
 	}
 
 	private void enviarPermiso(final String nombre, final boolean agregar, final boolean forzar) {
-		RedCofres.CANAL.clientHandle().send(new RedCofres.CambiarPermiso(this.pos, nombre, agregar, forzar));
+		ClientPlayNetworking.send(new RedCofres.CambiarPermiso(this.pos, nombre, agregar, forzar));
 		if (agregar && this.campoNombre != null) {
 			this.campoNombre.setValue("");
 		}

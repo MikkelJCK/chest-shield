@@ -2,6 +2,8 @@ package com.mikkeljck.chestshield.client.pantalla;
 
 import com.mikkeljck.chestshield.proteccion.Proteccion;
 import com.mikkeljck.chestshield.red.RedCofres;
+
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import com.mojang.blaze3d.platform.InputConstants;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -17,8 +19,7 @@ import net.minecraft.network.chat.Component;
  * Le pide la contrasena a alguien que no es el dueno.
  *
  * La abre el SERVIDOR mandando un paquete: el cliente no decide cuando aparece.
- * Widgets de vanilla, nada de owo, para que se vea como cualquier otra pantalla
- * del juego.
+ * Widgets de vanilla, para que se vea como cualquier otra pantalla del juego.
  */
 public class PantallaClave extends Screen {
 
@@ -60,7 +61,7 @@ public class PantallaClave extends Screen {
 		if (this.campo.getValue().isEmpty()) {
 			return;
 		}
-		RedCofres.CANAL.clientHandle().send(new RedCofres.IntentoClave(this.pos, this.campo.getValue()));
+		ClientPlayNetworking.send(new RedCofres.IntentoClave(this.pos, this.campo.getValue()));
 		this.onClose();
 	}
 

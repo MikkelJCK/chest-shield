@@ -13,7 +13,6 @@ import net.minecraft.core.UUIDUtil;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.permissions.Permissions;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
@@ -142,17 +141,9 @@ public class Proteccion {
 		return this.esPropietario(player) || this.esAdminConLlave(player);
 	}
 
-	/**
-	 * El nivel de op solo se puede comprobar en el servidor. En el cliente somos
-	 * optimistas para que la interfaz responda bien; el servidor tiene siempre la
-	 * ultima palabra.
-	 */
+	/** Tener la llave en la mano no basta: hace falta el permiso. Ver {@link Permisos}. */
 	private boolean esAdminConLlave(final Player player) {
-		if (!sostieneLlaveMaestra(player)) {
-			return false;
-		}
-		return !(player instanceof ServerPlayer serverPlayer)
-				|| serverPlayer.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER);
+		return sostieneLlaveMaestra(player) && Permisos.puedeUsarLlaveMaestra(player);
 	}
 
 	/**

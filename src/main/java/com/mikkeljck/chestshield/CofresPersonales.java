@@ -92,11 +92,8 @@ public class CofresPersonales implements ModInitializer {
 			return true;
 		});
 
-		// El canal de red se registra en codigo comun a proposito: owo exige que
-		// cliente y servidor declaren los mismos paquetes, y ademas SOLO permite
-		// registrarlos durante la inicializacion del mod. Si esta llamada falta,
-		// la clase RedCofres se inicializa tarde (al enviar el primer paquete) y
-		// owo lanza ServicesFrozenException.
+		// Los tipos de paquete se declaran en codigo comun a proposito: cliente y
+		// servidor tienen que conocer los mismos, o el saludo inicial no cuadra.
 		RedCofres.inicializar();
 
 		// Comando de administracion y pruebas. Ver ComandoCofre.

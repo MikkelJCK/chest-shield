@@ -10,6 +10,7 @@ import com.mikkeljck.chestshield.client.render.CofrePersonalRenderer;
 import com.mikkeljck.chestshield.red.RedCofres;
 
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import net.minecraft.client.Minecraft;
@@ -35,12 +36,12 @@ public class CofresPersonalesClient implements ClientModInitializer {
 
 		// El servidor decide cuando hay que pedir la contrasena; aqui solo se abre
 		// la pantalla. Los manejadores van en codigo de cliente porque tocan
-		// Minecraft.getInstance(); en comun solo se declaran los paquetes.
-		RedCofres.CANAL.registerClientbound(RedCofres.PedirClave.class, (mensaje, acceso) ->
-				Minecraft.getInstance().gui.setScreen(
+		// Minecraft.getInstance(); en comun solo se declaran los tipos de paquete.
+		ClientPlayNetworking.registerGlobalReceiver(RedCofres.PedirClave.TIPO, (mensaje, contexto) ->
+				contexto.client().gui.setScreen(
 						new PantallaClave(mensaje.pos(), mensaje.nombreDueno())));
 
-		RedCofres.CANAL.registerClientbound(RedCofres.CofreAbierto.class, (mensaje, acceso) ->
+		ClientPlayNetworking.registerGlobalReceiver(RedCofres.CofreAbierto.TIPO, (mensaje, contexto) ->
 				CofreAbiertoActual.establecer(mensaje.pos()));
 
 		ScreenEvents.AFTER_INIT.register((cliente, pantalla, ancho, alto) -> {
