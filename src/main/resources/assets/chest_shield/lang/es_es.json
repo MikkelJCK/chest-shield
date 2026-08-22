@@ -46,5 +46,6 @@
   "command.chest_shield.info_tolvas": "Tolvas: meter %s, sacar %s",
   "command.chest_shield.info_permisos": "Permisos (%s):",
   "command.chest_shield.info_sin_permisos": "Nadie más puede abrirlo",
-  "command.chest_shield.info_pendiente": "%s (pendiente)"
+  "command.chest_shield.info_pendiente": "%s (pendiente)",
+  "message.chest_shield.dueno_desconocido": "desconocido"
 }

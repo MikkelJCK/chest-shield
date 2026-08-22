@@ -507,7 +507,7 @@ public class PantallaConfigCofre extends Screen {
 		super.extractRenderState(graficos, ratonX, ratonY, parcial);
 
 		PanelVanilla.textoCentrado(graficos, this.font,
-				Component.translatable("container.chest_shield.cofre_de", cofre.getNombrePropietario()),
+				Component.translatable("container.chest_shield.cofre_de", cofre.getNombreMostrado()),
 				this.width / 2, arriba + 9, COLOR_TEXTO);
 
 		int y = arriba + 26 + 34;

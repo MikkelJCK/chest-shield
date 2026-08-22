@@ -369,7 +369,7 @@ public class CofrePersonalBlockEntity extends BlockEntity
 	public Component getDisplayName() {
 		return this.proteccion.getPropietario() == null
 				? Component.translatable("block.chest_shield.shielded_chest")
-				: Component.translatable("container.chest_shield.cofre_de", this.proteccion.getNombrePropietario());
+				: Component.translatable("container.chest_shield.cofre_de", this.proteccion.getNombreMostrado());
 	}
 
 	@Override

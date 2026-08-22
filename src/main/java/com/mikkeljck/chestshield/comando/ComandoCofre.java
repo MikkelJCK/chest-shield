@@ -60,7 +60,7 @@ public final class ComandoCofre {
 
 		Ajustes ajustes = cofre.getProteccion().getAjustes();
 		linea(contexto, Component.translatable("command.chest_shield.info_dueno",
-				cofre.getNombrePropietario()));
+				cofre.getNombreMostrado()));
 		linea(contexto, Component.translatable("command.chest_shield.info_protegido",
 				si(ajustes.estaProtegido())));
 		linea(contexto, Component.translatable("command.chest_shield.info_clave",

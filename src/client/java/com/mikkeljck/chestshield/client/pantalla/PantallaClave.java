@@ -37,6 +37,13 @@ public class PantallaClave extends Screen {
 		this.nombreDueno = nombreDueno;
 	}
 
+	/** El paquete trae el nombre crudo: si viene vacio, se traduce aqui. */
+	private Component nombreMostrado() {
+		return this.nombreDueno.isEmpty()
+				? Component.translatable("message.chest_shield.dueno_desconocido")
+				: Component.literal(this.nombreDueno);
+	}
+
 	@Override
 	protected void init() {
 		int centroX = this.width / 2;
@@ -85,7 +92,7 @@ public class PantallaClave extends Screen {
 		super.extractRenderState(graficos, ratonX, ratonY, parcial);
 		PanelVanilla.textoCentrado(graficos, this.font, this.title, centroX, centroY - 62, PanelVanilla.TEXTO);
 		PanelVanilla.textoCentrado(graficos, this.font,
-				Component.translatable("screen.chest_shield.cofre_de", this.nombreDueno),
+				Component.translatable("screen.chest_shield.cofre_de", this.nombreMostrado()),
 				centroX, centroY - 46, PanelVanilla.TEXTO_SUAVE);
 		PanelVanilla.textoCentrado(graficos, this.font,
 				Component.translatable("screen.chest_shield.escribe_clave"),

@@ -46,5 +46,6 @@
   "command.chest_shield.info_tolvas": "Hoppers: put in %s, take out %s",
   "command.chest_shield.info_permisos": "Permissions (%s):",
   "command.chest_shield.info_sin_permisos": "Nobody else can open it",
-  "command.chest_shield.info_pendiente": "%s (pending)"
+  "command.chest_shield.info_pendiente": "%s (pending)",
+  "message.chest_shield.dueno_desconocido": "unknown"
 }

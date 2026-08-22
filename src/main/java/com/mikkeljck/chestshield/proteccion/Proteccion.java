@@ -87,8 +87,22 @@ public class Proteccion {
 		return this.propietario;
 	}
 
+	/** El nombre tal cual esta guardado. Vacio si el cofre nunca tuvo dueno. */
 	public String getNombrePropietario() {
-		return this.nombrePropietario.isEmpty() ? "desconocido" : this.nombrePropietario;
+		return this.nombrePropietario;
+	}
+
+	/**
+	 * El nombre para mostrar, ya traducido si no se sabe.
+	 *
+	 * Antes esto devolvia la cadena "desconocido" en duro, y se colaba en los
+	 * mensajes: un jugador en ingles leia "This chest belongs to desconocido".
+	 * Devolver un Component deja que cada cliente lo vea en su idioma.
+	 */
+	public Component getNombreMostrado() {
+		return this.nombrePropietario.isEmpty()
+				? Component.translatable("message.chest_shield.dueno_desconocido")
+				: Component.literal(this.nombrePropietario);
 	}
 
 	public void asignarPropietario(final Player player) {
@@ -187,7 +201,7 @@ public class Proteccion {
 	}
 
 	public void avisarPropiedad(final Player player) {
-		avisar(player, Component.translatable("message.chest_shield.protegido", this.getNombrePropietario())
+		avisar(player, Component.translatable("message.chest_shield.protegido", this.getNombreMostrado())
 				.withStyle(ChatFormatting.RED));
 	}
 

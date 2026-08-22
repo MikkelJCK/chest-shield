@@ -124,7 +124,7 @@ public final class AperturaCofre {
 				return primero.getProteccion().getPropietario() == null
 						? Component.translatable("container.chest_shield.large_shielded_chest")
 						: Component.translatable("container.chest_shield.cofre_grande_de",
-								primero.getNombrePropietario());
+								primero.getNombreMostrado());
 			}
 
 			@Override

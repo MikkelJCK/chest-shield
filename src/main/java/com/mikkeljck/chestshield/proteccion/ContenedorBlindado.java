@@ -25,6 +25,10 @@ public interface ContenedorBlindado {
 		return this.getProteccion().getNombrePropietario();
 	}
 
+	default Component getNombreMostrado() {
+		return this.getProteccion().getNombreMostrado();
+	}
+
 	default boolean esPropietario(final Player player) {
 		return this.getProteccion().esPropietario(player);
 	}
